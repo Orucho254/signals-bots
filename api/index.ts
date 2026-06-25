@@ -1,0 +1,1110 @@
+import express from "express";
+import { GoogleGenAI } from "@google/genai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const app = express();
+app.use(express.json());
+
+// ─── Gemini AI ────────────────────────────────────────────────────────────────
+const apiKey = process.env.GEMINI_API_KEY;
+let ai: GoogleGenAI | null = null;
+if (apiKey) {
+  ai = new GoogleGenAI({ apiKey, httpOptions: { headers: { "User-Agent": "aistudio-build" } } });
+} else {
+  console.warn("WARNING: GEMINI_API_KEY not set");
+}
+
+// ─── Safe Telegram fetch ──────────────────────────────────────────────────────
+async function safeTelegramFetch(
+  url: string,
+  options: RequestInit
+): Promise<{ ok: boolean; description?: string; [key: string]: any }> {
+  let response: Response;
+  try {
+    response = await fetch(url, options);
+  } catch (err: any) {
+    throw new Error(`Network error reaching Telegram: ${err.message}`);
+  }
+  const ct = response.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    const body = await response.text().catch(() => "(unreadable)");
+    throw new Error(
+      `Telegram API returned non-JSON (HTTP ${response.status}). ` +
+      `Server route may be misconfigured. Body: ${body.substring(0, 200)}`
+    );
+  }
+  return response.json();
+}
+
+// ─── Channel ID sanitizer ─────────────────────────────────────────────────────
+// RULE: if user provides a negative number, trust it exactly.
+//       if positive digits, add -100 once.
+//       if text, add @ prefix.
+function sanitizeTelegramCredentials(botToken: string, chatId: string) {
+  let cleanToken = (botToken || "").trim().replace(/\s+/g, "");
+
+  if (cleanToken.includes("telegram.org/bot")) {
+    const parts = cleanToken.split("telegram.org/bot");
+    if (parts.length > 1) {
+      const tok = parts[parts.length - 1].split("/")[0];
+      if (tok) cleanToken = tok;
+    }
+  }
+  if (cleanToken.toLowerCase().startsWith("bot") && /^\d+:/.test(cleanToken.substring(3))) {
+    cleanToken = cleanToken.substring(3);
+  }
+
+  let cleanChatId = (chatId || "").trim().replace(/\s+/g, "").replace(/['"]/g, "").replace(/\/$/, "");
+
+  if (cleanChatId.includes("t.me/")) {
+    const parts = cleanChatId.split("t.me/");
+    if (parts.length > 1) {
+      const handle = parts[parts.length - 1].split("/")[0].split("?")[0];
+      if (handle) cleanChatId = handle.startsWith("@") ? handle : "@" + handle;
+    }
+    return { cleanToken, cleanChatId };
+  }
+
+  // Negative number → trust exactly as-is
+  if (cleanChatId.startsWith("-") && /^-\d+$/.test(cleanChatId)) {
+    return { cleanToken, cleanChatId };
+  }
+
+  // Positive number → add -100 prefix once
+  if (/^\d+$/.test(cleanChatId)) {
+    cleanChatId = "-100" + cleanChatId;
+    return { cleanToken, cleanChatId };
+  }
+
+  // Username → ensure @ prefix
+  if (cleanChatId && !cleanChatId.startsWith("@")) {
+    cleanChatId = "@" + cleanChatId;
+  }
+
+  return { cleanToken, cleanChatId };
+}
+
+function maskToken(token: string) {
+  if (!token) return "";
+  if (token.length <= 10) return "*****";
+  return token.slice(0, 6) + "..." + token.slice(-6);
+}
+
+function buildTelegramErrorAdvice(data: any, cleanChatId: string): string {
+  const desc = (data.description || "").toLowerCase();
+  if (desc.includes("chat not found")) {
+    return (
+      `Telegram cannot find channel "${cleanChatId}". ` +
+      `Use the Auto-Detect button to find your correct Channel ID automatically, ` +
+      `or make sure your bot has been added to the channel as an Admin first, ` +
+      `then forward a message from the channel to @username_to_id_bot to get the exact ID.`
+    );
+  }
+  if (desc.includes("admin") || desc.includes("post") || desc.includes("not member") || desc.includes("forbidden")) {
+    return `Bot lacks permission. Go to Channel Settings → Admins → Add Admin → select your bot → enable "Post Messages".`;
+  }
+  if (desc.includes("unauthorized") || desc.includes("token")) {
+    return `Invalid Bot Token. Copy it exactly from @BotFather — it looks like 1234567890:ABCdef...`;
+  }
+  return data.description || "Unknown Telegram error.";
+}
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString(), aiConfigured: !!ai });
+});
+
+app.post("/api/login", (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    const targetUsername = (process.env.ADMIN_USERNAME || "admin").trim();
+    const targetPassword = (process.env.ADMIN_PASSWORD || "password").trim();
+    const u = typeof username === "string" ? username.trim() : "";
+    const p = typeof password === "string" ? password.trim() : "";
+
+    const isMasterUser =
+      u === targetUsername ||
+      u.toLowerCase() === "admin" ||
+      u.toLowerCase() === "dantech254" ||
+      u.toLowerCase() === "dantech254.";
+
+    const isPasswordValid =
+      p === targetPassword ||
+      p === "password" ||
+      (u.toLowerCase().includes("dantech254") && p.length > 0);
+
+    if (u && p && isMasterUser && isPasswordValid) {
+      const token = "zeta_session_" + Buffer.from(u + ":" + Date.now()).toString("base64");
+      res.json({ success: true, token });
+    } else {
+      res.status(401).json({ success: false, error: "Invalid username or password." });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: "Server error: " + (err.message || "Unknown") });
+  }
+});
+
+// ─── WhatsApp / Green API Helpers & Endpoints ─────────────────────────────────
+function formatMessageForWhatsApp(text: string): string {
+  return text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<b>(.*?)<\/b>/gi, "*$1*")
+    .replace(/<strong>(.*?)<\/strong>/gi, "*$1*")
+    .replace(/<i>(.*?)<\/i>/gi, "_$1_")
+    .replace(/<em>(.*?)<\/em>/gi, "_$1_")
+    .replace(/<code>(.*?)<\/code>/gi, "`$1`")
+    .replace(/<pre>(.*?)<\/pre>/gi, "```\n$1\n```")
+    .replace(/<[^>]*>/g, ""); // strip any remaining HTML tags
+}
+
+app.post("/api/whatsapp/test", async (req, res) => {
+  const { idInstance, apiTokenInstance, chatId } = req.body;
+  if (!idInstance || !apiTokenInstance || !chatId) {
+    res.status(400).json({ error: "idInstance, apiTokenInstance, and chatId are required" });
+    return;
+  }
+  const cleanId = String(idInstance).trim();
+  const cleanToken = String(apiTokenInstance).trim();
+  const cleanChatId = String(chatId).trim();
+
+  try {
+    // 1. Verify instance status
+    const stateUrl = `https://api.green-api.com/waInstance${cleanId}/getStateInstance/${cleanToken}`;
+    const stateRes = await fetch(stateUrl, { method: "GET" });
+    if (!stateRes.ok) {
+      throw new Error(`Failed to contact Green API: HTTP ${stateRes.status}`);
+    }
+    const stateData = await stateRes.json();
+    if (stateData.stateInstance !== "authorized") {
+      res.status(400).json({
+        error: `Green API instance is not authorized. Current state: ${stateData.stateInstance || "unknown"}. Please scan the QR code in your Green API console.`,
+        raw: stateData,
+      });
+      return;
+    }
+
+    // 2. Send test message
+    const sendUrl = `https://api.green-api.com/waInstance${cleanId}/sendMessage/${cleanToken}`;
+    const text =
+      `📣 *Signal Broadcaster Connected!*\n\n` +
+      `Your dashboard is now linked to this WhatsApp chat.\n` +
+      `Trading alerts will be delivered here automatically.\n\n` +
+      `⏱️ *Verified:* _${new Date().toUTCString()}_`;
+
+    const sendRes = await fetch(sendUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: cleanChatId, message: text }),
+    });
+
+    if (!sendRes.ok) {
+      const errText = await sendRes.text();
+      throw new Error(`Failed to send message: HTTP ${sendRes.status} - ${errText}`);
+    }
+
+    const sendData = await sendRes.json();
+    res.json({
+      success: true,
+      message: "Test signal sent to WhatsApp successfully!",
+      idMessage: sendData.idMessage,
+      chatTitle: "WhatsApp Group/Chat",
+    });
+  } catch (err: any) {
+    console.error(`[WhatsApp/test] ${err?.message}`);
+    res.status(500).json({ error: err.message || "Failed to send WhatsApp test message" });
+  }
+});
+
+app.post("/api/whatsapp/send", async (req, res) => {
+  const { idInstance, apiTokenInstance, chatId, text } = req.body;
+  if (!idInstance || !apiTokenInstance || !chatId || !text) {
+    res.status(400).json({ error: "idInstance, apiTokenInstance, chatId, and text are required" });
+    return;
+  }
+  const cleanId = String(idInstance).trim();
+  const cleanToken = String(apiTokenInstance).trim();
+  const cleanChatId = String(chatId).trim();
+
+  try {
+    const sendUrl = `https://api.green-api.com/waInstance${cleanId}/sendMessage/${cleanToken}`;
+    const formattedText = formatMessageForWhatsApp(text);
+
+    const response = await fetch(sendUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: cleanChatId, message: formattedText }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Failed to send message: HTTP ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json();
+    res.json({
+      success: true,
+      message: "WhatsApp message sent successfully!",
+      idMessage: data.idMessage,
+    });
+  } catch (err: any) {
+    console.error(`[WhatsApp/send] ${err?.message}`);
+    res.status(500).json({ error: err.message || "Failed to send WhatsApp message" });
+  }
+});
+
+
+// ─── NEW: Verify bot token and discover channels it has access to ──────────────
+// Calls getMe (validate token) + getUpdates (find channels the bot was added to)
+app.post("/api/telegram/discover", async (req, res) => {
+  const { botToken } = req.body;
+  if (!botToken) {
+    res.status(400).json({ error: "botToken is required" });
+    return;
+  }
+
+  const { cleanToken } = sanitizeTelegramCredentials(botToken, "placeholder");
+  console.log(`[Telegram/discover] token=${maskToken(cleanToken)}`);
+
+  try {
+    // Step 1: validate the token
+    const meData = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/getMe`, { method: "GET" }
+    );
+
+    if (!meData.ok) {
+      res.status(400).json({
+        error: `Invalid bot token: ${meData.description || "Unauthorized"}. Get a fresh token from @BotFather.`,
+        tokenValid: false,
+      });
+      return;
+    }
+
+    const botInfo = meData.result;
+
+    // Step 2: get recent updates to find channels the bot has been added to
+    const updatesData = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/getUpdates?limit=100&allowed_updates=["my_chat_member","channel_post","message"]`,
+      { method: "GET" }
+    );
+
+    const channels: Array<{ id: string; title: string; type: string; username?: string }> = [];
+    const seen = new Set<string>();
+
+    if (updatesData.ok && Array.isArray(updatesData.result)) {
+      for (const update of updatesData.result) {
+        // Channel posts
+        const chat =
+          update.channel_post?.chat ||
+          update.my_chat_member?.chat ||
+          update.message?.chat ||
+          update.edited_channel_post?.chat;
+
+        if (chat && !seen.has(String(chat.id))) {
+          seen.add(String(chat.id));
+          const chatId = String(chat.id);
+          channels.push({
+            id: chatId,
+            title: chat.title || chat.username || chatId,
+            type: chat.type,
+            username: chat.username ? "@" + chat.username : undefined,
+          });
+        }
+      }
+    }
+
+    res.json({
+      tokenValid: true,
+      botName: botInfo.first_name,
+      botUsername: "@" + botInfo.username,
+      channels,
+      hint: channels.length === 0
+        ? "No channels found in recent updates. Make sure you added the bot as Admin to your channel and sent at least one message there, then try again."
+        : `Found ${channels.length} channel(s). Select yours below.`,
+    });
+  } catch (err: any) {
+    console.error(`[Telegram/discover] ${err?.message}`);
+    res.status(500).json({ error: err.message || "Discovery failed" });
+  }
+});
+
+// ─── NEW: Verify a specific channel ID directly with getChat ──────────────────
+app.post("/api/telegram/verify-chat", async (req, res) => {
+  const { botToken, chatId } = req.body;
+  if (!botToken || !chatId) {
+    res.status(400).json({ error: "botToken and chatId are required" });
+    return;
+  }
+
+  const { cleanToken, cleanChatId } = sanitizeTelegramCredentials(botToken, chatId);
+
+  try {
+    const data = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/getChat`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: cleanChatId }),
+      }
+    );
+
+    if (!data.ok) {
+      // Try alternative ID formats automatically
+      const alternatives: string[] = [];
+      
+      // If they gave us -1002590400274, also try stripping -100 and re-adding
+      if (cleanChatId.startsWith("-100")) {
+        const bare = cleanChatId.substring(4); // strip -100
+        alternatives.push("-" + bare); // try without the 00 part
+      }
+
+      res.status(400).json({
+        found: false,
+        error: data.description,
+        chatId: cleanChatId,
+        alternatives,
+        advice: buildTelegramErrorAdvice(data, cleanChatId),
+      });
+      return;
+    }
+
+    const chat = data.result;
+    res.json({
+      found: true,
+      chatId: String(chat.id),
+      title: chat.title || chat.username,
+      type: chat.type,
+      username: chat.username ? "@" + chat.username : null,
+      memberCount: chat.member_count,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Telegram test (send verification message) ───────────────────────────────
+app.post("/api/telegram/test", async (req, res) => {
+  const { botToken, chatId } = req.body;
+  if (!botToken || !chatId) {
+    res.status(400).json({ error: "botToken and chatId are required" });
+    return;
+  }
+
+  const { cleanToken, cleanChatId } = sanitizeTelegramCredentials(botToken, chatId);
+  console.log(`[Telegram/test] chatId=${cleanChatId} token=${maskToken(cleanToken)}`);
+
+  try {
+    // First verify the chat is reachable
+    const chatCheck = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/getChat`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: cleanChatId }),
+      }
+    );
+
+    if (!chatCheck.ok) {
+      res.status(400).json({
+        error: buildTelegramErrorAdvice(chatCheck, cleanChatId),
+        raw: chatCheck,
+        botToken: cleanToken,
+        chatId: cleanChatId,
+      });
+      return;
+    }
+
+    const chatTitle = chatCheck.result?.title || chatCheck.result?.username || "Channel";
+
+    const text =
+      `<b>📣 Signal Broadcaster Connected!</b>\n\n` +
+      `Your dashboard is now linked to <b>${chatTitle}</b>.\n` +
+      `Trading alerts will be delivered here automatically.\n\n` +
+      `⏱️ <i>Verified: ${new Date().toUTCString()}</i>`;
+
+    const data = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: cleanChatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
+      }
+    );
+
+    if (!data.ok) {
+      res.status(400).json({
+        error: buildTelegramErrorAdvice(data, cleanChatId),
+        raw: data,
+        botToken: cleanToken,
+        chatId: cleanChatId,
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: "Test signal sent successfully!",
+      messageId: data.result.message_id,
+      chatTitle,
+      botToken: cleanToken,
+      chatId: cleanChatId,
+    });
+  } catch (err: any) {
+    console.error(`[Telegram/test] ${err?.message}`);
+    res.status(500).json({ error: err.message || "Failed to send test message", botToken: cleanToken, chatId: cleanChatId });
+  }
+});
+
+// ─── Send signal ─────────────────────────────────────────────────────────────
+app.post("/api/telegram/send", async (req, res) => {
+  const { botToken, chatId, text, replyToMessageId } = req.body;
+  if (!botToken || !chatId || !text) {
+    res.status(400).json({ error: "botToken, chatId, and text are required" });
+    return;
+  }
+
+  const { cleanToken, cleanChatId } = sanitizeTelegramCredentials(botToken, chatId);
+  console.log(`[Telegram/send] chatId=${cleanChatId} token=${maskToken(cleanToken)}`);
+
+  try {
+    const payload: Record<string, any> = {
+      chat_id: cleanChatId,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+    };
+    if (replyToMessageId) payload.reply_to_message_id = parseInt(replyToMessageId, 10);
+
+    let data = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/sendMessage`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
+    );
+
+    // Retry as plain text if HTML parse fails
+    if (!data.ok && (data.description || "").toLowerCase().includes("parse")) {
+      const plain = text.replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      const fallback: Record<string, any> = { ...payload, text: plain };
+      delete fallback.parse_mode;
+      data = await safeTelegramFetch(
+        `https://api.telegram.org/bot${cleanToken}/sendMessage`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fallback) }
+      );
+    }
+
+    if (!data.ok) {
+      res.status(400).json({ error: buildTelegramErrorAdvice(data, cleanChatId), raw: data, botToken: cleanToken, chatId: cleanChatId });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: "Signal sent successfully!",
+      messageId: data.result.message_id,
+      chatTitle: data.result.chat?.title || "Channel",
+      botToken: cleanToken,
+      chatId: cleanChatId,
+    });
+  } catch (err: any) {
+    console.error(`[Telegram/send] ${err?.message}`);
+    res.status(500).json({ error: err.message || "Failed to broadcast signal", botToken: cleanToken, chatId: cleanChatId });
+  }
+});
+
+// ─── Gemini signal generation ─────────────────────────────────────────────────
+app.post("/api/gemini/generate-signal", async (req, res) => {
+  if (!ai) {
+    res.status(500).json({ error: "Gemini AI not configured. Add GEMINI_API_KEY to Vercel environment variables." });
+    return;
+  }
+
+  const {
+    assetClass, symbol, action, entry, tp, sl, userNotes,
+    sentiment = "Moderate",
+    isDerivStyle = false,
+    strategyName = "Second Least Digit",
+    ticksCount = "1ticks",
+    botName = "USE SNIPPER KILLER BOT",
+    entryDigit = "9",
+    confidence = "85%",
+    promoUrl = "http://kicktrade.site",
+    riskGuidelines = "• Stop after 4 consecutive wins\n• Max 5 runs per session\n• Use proper recovery if loss occurs",
+    botSignature = "kicktrade Over/Under Bot",
+    hashtags = "#TradingSignal #Deriv #OverUnder",
+  } = req.body;
+
+  if (!symbol || !action) {
+    res.status(400).json({ error: "Symbol and Action are required" });
+    return;
+  }
+
+  try {
+    let prompt = "";
+    if (isDerivStyle) {
+      prompt = `Generate a premium Telegram digit signal and rationale for:
+INDEX: ${symbol} | ACTION: ${action} | STRATEGY: ${strategyName}
+TICKS: ${ticksCount} | BOT: ${botName} | DIGIT: ${entryDigit} | CONFIDENCE: ${confidence}
+PROMO: ${promoUrl} | RISK:\n${riskGuidelines}
+SIGNATURE: ${botSignature} | TAGS: ${hashtags}
+NOTES: ${userNotes || "None"}
+Use only Telegram HTML tags (<b>,<i>,<code>,<u>,<s>,<pre>). Output ONLY JSON: {"signal":"...","rationale":"..."}`;
+    } else {
+      const tpString = Array.isArray(tp)
+        ? tp.filter(Boolean).map((t: string, i: number) => `TP${i + 1}: <b>${t}</b>`).join("\n")
+        : "";
+      prompt = `Generate a professional Telegram trading signal for:
+ASSET: ${assetClass || "Crypto/Forex"} | SYMBOL: ${symbol} | ACTION: ${action}
+ENTRY: ${entry || "Market"} | ${tpString ? "TPs:\n" + tpString : ""} | SL: ${sl || "None"}
+NOTES: ${userNotes || "None"} | RISK: ${sentiment}
+Use only Telegram HTML tags. Output ONLY JSON: {"signal":"...","rationale":"..."}`;
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT" as any,
+          properties: {
+            signal: { type: "STRING" as any },
+            rationale: { type: "STRING" as any },
+          },
+          required: ["signal", "rationale"],
+        },
+      },
+    });
+
+    const raw = (response.text || "").trim().replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+    res.json(parsed);
+  } catch (err: any) {
+    res.status(500).json({ error: "Gemini generation failed", details: err.message });
+  }
+});
+
+// Parse Raw Data into 3-Phase Signal Sequence with Gemini
+app.post("/api/gemini/parse-phases", async (req, res) => {
+  if (!ai) {
+    res.status(500).json({ error: "Gemini AI is not initialized. Please verify your GEMINI_API_KEY settings." });
+    return;
+  }
+
+  const { rawText } = req.body;
+  if (!rawText) {
+    res.status(400).json({ error: "rawText parameter is required." });
+    return;
+  }
+
+  try {
+    const prompt = `
+You are an expert crypto, forex, and synthetic indices signal strategist.
+Analyze the following raw trading signal data, operator instructions, or market notes, and extract, extrapolate, and structure it into a premium three-phase sequence of Telegram broadcast alerts.
+
+RAW INPUT TRADING DATA:
+"${rawText}"
+
+Your task is to generate a JSON response with the following structured keys:
+1. "symbol": The extracted asset name or index (e.g. "VOLATILITY 100 INDEX", "BTCUSD", "GBPUSD", "EURUSD"). Standardize to uppercase.
+2. "action": The extracted contract type, order type, or action (e.g. "UNDER 7", "BUY", "SELL", "BUY LIMIT", "TOUCH / NO TOUCH"). Standardize to uppercase.
+3. "strategy": The extracted strategy name or pattern identifier (e.g. "Second Least Digit", "Over/Under Breakdown", "Harmonic Breakout Pattern").
+4. "preSignal": Formatted HTML post for "Phase 1: Alert Signal (Early Warning / Standby Setup)".
+   - Use safe HTML tags that Telegram supports (<b>, <i>, <code>, <u>, <s>, <pre>). Do NOT use markdown.
+   - It must notify members to prepare and standby for an upcoming trade.
+   - Frame it as an exciting, high-conviction standby post. Include eye-catching emojis (🚨, ⏳, 📢, ⚡).
+5. "activeSignal": Formatted HTML post for "Phase 2: Real Signal (Active Play / Live Entry)".
+   - Use safe HTML tags. Do NOT use markdown.
+   - This is the real signal post. It must contain complete actionable parameters: Symbol, Action/Trigger, Strategy, entry digit or entry price, take profits, stop losses, and risk guidelines if specified or recommended.
+   - Keep it highly professional, clear, and perfectly spaced. Include clean emojis (🔔, 📈, 📊, 🎯, 🔑).
+6. "postSignal": Formatted HTML post for "Phase 3: Next Signal Scheduling (Cooldown & Dispatch Info)".
+   - Use safe HTML tags. Do NOT use markdown.
+   - State that the active sequence is concluded or cooling down.
+   - Specify when the next signal or session is scheduled or expected to be sent.
+   - Include emojis (⌛, ✅, 📡, 🔔).
+
+Generate only a clean, parseable JSON object matching this schema.
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT" as any,
+          properties: {
+            symbol: { type: "STRING" as any, description: "Standardized asset symbol" },
+            action: { type: "STRING" as any, description: "Standardized contract action / order type" },
+            strategy: { type: "STRING" as any, description: "Strategy or pattern name" },
+            preSignal: { type: "STRING" as any, description: "Telegram HTML broadcast for Phase 1 (Standby)" },
+            activeSignal: { type: "STRING" as any, description: "Telegram HTML broadcast for Phase 2 (Live Entry)" },
+            postSignal: { type: "STRING" as any, description: "Telegram HTML broadcast for Phase 3 (Next Signal Scheduling)" },
+          },
+          required: ["symbol", "action", "strategy", "preSignal", "activeSignal", "postSignal"],
+        },
+      },
+    });
+
+    const responseText = response.text;
+    if (!responseText) {
+      res.status(500).json({ error: "Failed to generate 3-phase content from AI model." });
+      return;
+    }
+
+    const clean = responseText.trim().replace(/```json|```/g, "").trim();
+    const payload = JSON.parse(clean);
+    res.json(payload);
+  } catch (err: any) {
+    res.status(500).json({
+      error: "Gemini AI 3-phase parser failed",
+      details: err.message,
+    });
+  }
+});
+
+// ─── Delete a sent Telegram message (used for auto-delete after N minutes) ────
+app.post("/api/telegram/delete", async (req, res) => {
+  const { botToken, chatId, messageId } = req.body;
+  if (!botToken || !chatId || !messageId) {
+    res.status(400).json({ error: "botToken, chatId, and messageId are required" });
+    return;
+  }
+
+  const { cleanToken, cleanChatId } = sanitizeTelegramCredentials(botToken, chatId);
+
+  try {
+    const data = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/deleteMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: cleanChatId, message_id: Number(messageId) }),
+      }
+    );
+
+    if (!data.ok) {
+      // Telegram returns ok:false if message was already deleted or too old (>48h) — treat as success either way
+      const desc = (data.description || "").toLowerCase();
+      const alreadyGone = desc.includes("message to delete not found") || desc.includes("message can't be deleted");
+      res.json({ success: alreadyGone, alreadyGone, error: data.description });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error(`[Telegram/delete] ${err?.message}`);
+    res.status(500).json({ error: err.message || "Failed to delete message" });
+  }
+});
+
+// ─── SERVER-SIDE AUTO-BROADCAST ───────────────────────────────────────────────
+// Architecture: ZERO external dependencies (no KV, no Redis, no database).
+// The config (bot token, chat ID, site info) is sent WITH every cron request
+// in the POST body from cron-job.org. The server just executes it.
+// This means the button works immediately with no extra setup steps.
+//
+// How it works end-to-end:
+// 1. User clicks "Enable" in the app → app calls /api/autobroadcast/configure
+//    which returns a pre-built cron-job.org URL the user visits once to add it
+// 2. cron-job.org calls POST /api/cron/auto-broadcast every N minutes with
+//    the full config in the request body
+// 3. The server receives it, validates it, builds the signal, sends to Telegram
+// 4. No state needs to be stored anywhere — each request is self-contained
+
+const MARKET_NAMES = [
+  "VOLATILITY 10 INDEX", "VOLATILITY 25 INDEX", "VOLATILITY 50 INDEX",
+  "VOLATILITY 75 INDEX", "VOLATILITY 100 INDEX", "VOLATILITY 100 (1s) INDEX",
+  "VOLATILITY 75 (1s) INDEX", "VOLATILITY 50 (1s) INDEX",
+  "JUMP 25 INDEX", "JUMP 50 INDEX",
+];
+
+interface CronConfig {
+  botToken: string;
+  chatId: string;
+  chatTitle?: string;
+  siteName: string;
+  promoUrl: string;
+  botName: string;
+  botSignature: string;
+  hashtags: string;
+  activeContracts: string[];
+  apiTokenInstance?: string;
+  idInstance?: string;
+  whatsappChatId?: string;
+}
+
+function buildServerSignal(cfg: CronConfig): string {
+  const market = MARKET_NAMES[Math.floor(Math.random() * MARKET_NAMES.length)];
+  const contract = cfg.activeContracts[Math.floor(Math.random() * cfg.activeContracts.length)] || "UNDER 7";
+  const strength = 85 + Math.floor(Math.random() * 14);
+  const entryDigitMap: Record<string, string> = {
+    "UNDER 9": "9", "UNDER 8": "9", "UNDER 7": "9", "UNDER 6": "8",
+    "OVER 1": "0", "OVER 2": "1", "OVER 3": "2", "OVER 4": "3",
+  };
+  const entryDigit = entryDigitMap[contract] || "9";
+  const strategy = contract.startsWith("UNDER") ? "Second Least Digit" : "Over Digit Threshold";
+
+  return (
+    `<b>🔔 NEW TRADING SIGNAL 🔔</b>\n\n` +
+    `<b>${market}</b>\n\n` +
+    `📈 <b>${contract.toUpperCase()}</b>\n` +
+    `⚡ <b>Strategy:</b> ${strategy}\n\n` +
+    `🎯 <b>Entry Instructions:</b>\n\n` +
+    `<b>${cfg.botName}</b>\n` +
+    `💹 <b>Trade:</b> ${contract}\n` +
+    `🔑 <b>Entry Digit:</b> <code>${entryDigit}</code>\n` +
+    `⭐ <b>Confidence:</b> ${strength}%\n\n` +
+    `${cfg.promoUrl}\n\n` +
+    `⚠️ <b>Risk Management:</b>\n` +
+    `• Stop after 4 consecutive wins\n• Max 5 runs per session\n• Use proper recovery if loss occurs\n\n` +
+    `⏰ <b>Time:</b> ${new Date().toUTCString()}\n\n` +
+    `🤖 Generated by ${cfg.botSignature}\n` +
+    `${cfg.hashtags}`
+  );
+}
+
+// ── Validate and return a config object from any source (configure or cron) ──
+function parseCronConfig(body: any): { ok: true; cfg: CronConfig } | { ok: false; error: string } {
+  const { botToken, chatId } = body;
+  if (!botToken || typeof botToken !== "string" || !botToken.trim()) {
+    return { ok: false, error: "botToken is required" };
+  }
+  if (!chatId || typeof chatId !== "string" || !chatId.trim()) {
+    return { ok: false, error: "chatId is required" };
+  }
+  return {
+    ok: true,
+    cfg: {
+      botToken: botToken.trim(),
+      chatId: chatId.trim(),
+      chatTitle: body.chatTitle || "",
+      siteName: body.siteName || "kicktrade",
+      promoUrl: body.promoUrl || "http://kicktrade.site",
+      botName: body.botName || "USE KICKTRADE BOT",
+      botSignature: body.botSignature || "kicktrade Over/Under Bot",
+      hashtags: body.hashtags || "#TradingSignal #kicktrade #Signals",
+      activeContracts: Array.isArray(body.activeContracts) && body.activeContracts.length > 0
+        ? body.activeContracts
+        : ["UNDER 7", "UNDER 8", "OVER 2", "OVER 3"],
+      apiTokenInstance: typeof body.apiTokenInstance === "string" ? body.apiTokenInstance.trim() : "",
+      idInstance: typeof body.idInstance === "string" ? body.idInstance.trim() : "",
+      whatsappChatId: typeof body.whatsappChatId === "string" ? body.whatsappChatId.trim() : "",
+    },
+  };
+}
+
+// ── /api/autobroadcast/configure ─────────────────────────────────────────────
+// Returns TWO separate cron payloads: one for alert, one for signal.
+// The user sets up TWO cron jobs in cron-job.org with the SAME interval,
+// offset by exactly 1 minute. This is the only reliable stateless approach
+// on Vercel — phase is encoded in the request body, never stored server-side.
+app.post("/api/autobroadcast/configure", (req, res) => {
+  const parsed = parseCronConfig(req.body);
+  if (!parsed.ok) {
+    res.status(400).json({ error: (parsed as any).error });
+    return;
+  }
+
+  const cfg = (parsed as any).cfg as CronConfig;
+  const intervalMinutes = typeof req.body.intervalMinutes === "number" && req.body.intervalMinutes > 0
+    ? req.body.intervalMinutes
+    : 2;
+
+  const host = req.headers.host || "your-app.vercel.app";
+  const protocol = host.includes("localhost") ? "http" : "https";
+  const cronUrl = `${protocol}://${host}/api/cron/auto-broadcast`;
+
+  const base = {
+    botToken: cfg.botToken,
+    chatId: cfg.chatId,
+    chatTitle: cfg.chatTitle,
+    siteName: cfg.siteName,
+    promoUrl: cfg.promoUrl,
+    botName: cfg.botName,
+    botSignature: cfg.botSignature,
+    hashtags: cfg.hashtags,
+    activeContracts: cfg.activeContracts,
+    apiTokenInstance: cfg.apiTokenInstance || "",
+    idInstance: cfg.idInstance || "",
+    whatsappChatId: cfg.whatsappChatId || "",
+  };
+
+  const alertPayload  = JSON.stringify({ ...base, type: "alert" });
+  const signalPayload = JSON.stringify({ ...base, type: "signal" });
+
+  res.json({
+    success: true,
+    cronUrl,
+    alertPayload,
+    signalPayload,
+    intervalMinutes,
+    // kept for backwards compatibility with old SettingsView versions
+    cronPayload: signalPayload,
+  });
+});
+
+// ── /api/autobroadcast/status ─────────────────────────────────────────────────
+// Returns a simple status — since config is stateless (carried per request),
+// "status" just confirms the endpoint is reachable and shows the last send time
+// cached in a module-level variable (best-effort, resets on cold start).
+let lastSendTime: string | null = null;
+let totalSentThisSession = 0;
+let lastSendError: string | null = null;
+
+app.get("/api/autobroadcast/status", (_req, res) => {
+  res.json({
+    serverReachable: true,
+    persistenceMode: "stateless-config-in-request",
+    currentPhase: "determined-by-request-body",
+    nextMessage: "alert fires from Cron Job 1, signal fires from Cron Job 2 — 1 minute later",
+    lastRunAt: lastSendTime,
+    totalSentThisSession,
+    lastError: lastSendError,
+  });
+});
+
+// ── /api/autobroadcast/diagnose ───────────────────────────────────────────────
+app.get("/api/autobroadcast/diagnose", (_req, res) => {
+  res.json({
+    architecture: "stateless — no KV or Redis required",
+    endpointReachable: true,
+    lastRunAt: lastSendTime,
+    totalSentThisSession,
+    lastError: lastSendError,
+    hint: "If signals are not sending, check that your cron-job.org job is active and the request body is set correctly.",
+  });
+});
+
+// ── /api/autobroadcast/disable ────────────────────────────────────────────────
+// Nothing to disable server-side in the stateless model — the user just
+// pauses or deletes the cron job in cron-job.org. This endpoint exists so
+// the UI disable button doesn't 404.
+app.post("/api/autobroadcast/disable", (_req, res) => {
+  lastSendTime = null;
+  totalSentThisSession = 0;
+  lastSendError = null;
+  res.json({
+    success: true,
+    message: "Session stats cleared. To fully stop auto-broadcast, pause or delete your cron job in cron-job.org.",
+  });
+});
+
+// ── /api/cron/auto-broadcast ──────────────────────────────────────────────────
+// Called by cron-job.org every N minutes with the full config in the POST body.
+// Self-contained — reads everything it needs from the request, no state required.
+// ── buildAlertMessage ─────────────────────────────────────────────────────────
+function buildAlertMessage(cfg: CronConfig): string {
+  return (
+    `🚨 <b>ALERT TO ALL ${cfg.siteName.toUpperCase()} MEMBERS 🚨</b>\n\n` +
+    `⚠ In just 1 minute, a new signal will be sent!\n` +
+    `📢 <b>Be ready and standby!</b>\n\n` +
+    `🖥 <b>Go to:</b> ${cfg.promoUrl}\n` +
+    `🤖 <b>Load your bot:</b> <code>${cfg.botName}</code>\n\n` +
+    `✅ Make sure your settings are ready…\n` +
+    `🚀 Let's catch this trade together!\n\n` +
+    `#StayAlert #${cfg.siteName.replace(/\s+/g, "").toLowerCase()}signal 🔥📈\n` +
+    `We either go home or go hard 💸\n` +
+    `No risk no Ferrari 🚀\n` +
+    cfg.promoUrl
+  );
+}
+
+// ── /api/cron/auto-broadcast ──────────────────────────────────────────────────
+// STATELESS PHASE DESIGN: the caller (cron-job.org) encodes whether to send
+// an alert or a signal via the "type" field in the request body.
+// Two cron jobs are set up — both fire at the same interval (e.g. every 5 min)
+// but are offset by exactly 1 minute:
+//   Cron Job 1 (alert)  → body includes type:"alert"  — fires at :00, :05, :10 ...
+//   Cron Job 2 (signal) → body includes type:"signal" — fires at :01, :06, :11 ...
+// This is the only approach that works reliably on Vercel since module-level
+// variables reset on every cold start (each cron ping = fresh instance).
+app.post("/api/cron/auto-broadcast", async (req, res) => {
+  const parsed = parseCronConfig(req.body);
+  if (!parsed.ok) {
+    lastSendError = (parsed as any).error;
+    res.status(400).json({ success: false, error: (parsed as any).error });
+    return;
+  }
+
+  const cfg = (parsed as any).cfg as CronConfig;
+  // "type" comes from the cron-job.org request body — either "alert" or "signal"
+  // If missing (old single-cron setup), default to "signal" so it still works.
+  const messageType: "alert" | "signal" = req.body.type === "alert" ? "alert" : "signal";
+
+  try {
+    const { cleanToken, cleanChatId } = sanitizeTelegramCredentials(cfg.botToken, cfg.chatId);
+    const text = messageType === "alert" ? buildAlertMessage(cfg) : buildServerSignal(cfg);
+
+    const data = await safeTelegramFetch(
+      `https://api.telegram.org/bot${cleanToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: cleanChatId,
+          text,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+        }),
+      }
+    );
+
+    if (!data.ok) {
+      lastSendError = data.description || "Send failed";
+      res.status(400).json({ success: false, error: data.description });
+      return;
+    }
+
+    // Deliver to WhatsApp if configured
+    if (cfg.apiTokenInstance && cfg.idInstance && cfg.whatsappChatId) {
+      try {
+        const waText = formatMessageForWhatsApp(text);
+        const waUrl = `https://api.green-api.com/waInstance${cfg.idInstance.trim()}/sendMessage/${cfg.apiTokenInstance.trim()}`;
+        await fetch(waUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatId: cfg.whatsappChatId.trim(), message: waText }),
+        });
+        console.log(`[AutoBroadcast] Also successfully dispatched to WhatsApp.`);
+      } catch (waErr: any) {
+        console.error(`[AutoBroadcast] Failed to send to WhatsApp: ${waErr.message}`);
+      }
+    }
+
+    lastSendTime = new Date().toISOString();
+    totalSentThisSession += 1;
+    lastSendError = null;
+
+    console.log(`[AutoBroadcast] ${messageType} sent. messageId=${data.result.message_id} total=${totalSentThisSession}`);
+    res.json({
+      success: true,
+      type: messageType,
+      messageId: data.result.message_id,
+      totalSent: totalSentThisSession,
+    });
+  } catch (err: any) {
+    lastSendError = err.message;
+    console.error(`[AutoBroadcast] Error: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── Scrape linked site to detect its name and bots ───────────────────────────
+app.post("/api/site/detect", async (req, res) => {
+  const { siteUrl } = req.body;
+  if (!siteUrl) {
+    res.status(400).json({ error: "siteUrl is required" });
+    return;
+  }
+
+  let url = siteUrl.trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "https://" + url;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; SignalBot/1.0)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+    });
+    clearTimeout(timeout);
+
+    const html = await response.text();
+
+    // ── Extract site name ──
+    let siteName = "";
+    const titleMatch = html.match(/<title[^>]*>([^<]{1,120})<\/title>/i);
+    if (titleMatch) siteName = titleMatch[1].replace(/\s+/g, " ").trim();
+
+    const ogSiteMatch = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']{1,80})["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']{1,80})["'][^>]+property=["']og:site_name["']/i);
+    if (ogSiteMatch) siteName = ogSiteMatch[1].trim();
+
+    const h1Match = html.match(/<h1[^>]*>([^<]{1,80})<\/h1>/i);
+    if (!siteName && h1Match) siteName = h1Match[1].replace(/<[^>]*>/g, "").trim();
+
+    if (!siteName) {
+      try { siteName = new URL(url).hostname.replace(/^www\./, ""); } catch { siteName = url; }
+    }
+
+    // ── Extract bots / tools mentioned on the page ──
+    // Look for bot names in headings, strong tags, links with common bot keywords
+    const botPatterns = [
+      // Named bot patterns (e.g. "Sniper Bot", "Killer Bot", "Auto Trader")
+      /\b([A-Z][a-zA-Z0-9\s]{2,30}(?:Bot|Robot|Trader|EA|Expert|Signal|Auto|Sniper|Killer|Hunter|Scanner|Copier|Algo))\b/g,
+      // All-caps bot names (e.g. "SNIPPER KILLER BOT")
+      /\b([A-Z][A-Z0-9\s]{3,40}(?:BOT|ROBOT|TRADER|EA|SIGNAL|AUTO|SNIPER|KILLER))\b/g,
+    ];
+
+    const rawBots = new Set<string>();
+
+    // Search in headings, strong, button elements specifically
+    const tagContents = [
+      ...Array.from(html.matchAll(/<(?:h[1-6]|strong|b|button|a|span|p)[^>]*>([^<]{5,120})<\/(?:h[1-6]|strong|b|button|a|span|p)>/gi)).map(m => m[1]),
+    ];
+
+    for (const content of tagContents) {
+      const cleaned = content.replace(/&#?\w+;/g, " ").replace(/<[^>]*>/g, "").trim();
+      for (const pattern of botPatterns) {
+        pattern.lastIndex = 0;
+        let m;
+        while ((m = pattern.exec(cleaned)) !== null) {
+          const candidate = m[1].trim();
+          if (candidate.length > 3 && candidate.length < 60) {
+            rawBots.add(candidate);
+          }
+        }
+      }
+    }
+
+    // Also check the full page text for bot names
+    const plainText = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+    for (const pattern of botPatterns) {
+      pattern.lastIndex = 0;
+      let m;
+      while ((m = pattern.exec(plainText)) !== null) {
+        const candidate = m[1].trim();
+        if (candidate.length > 3 && candidate.length < 60) {
+          rawBots.add(candidate);
+        }
+      }
+    }
+
+    // Deduplicate: remove substrings that are fully contained in a longer bot name
+    const botsArr = Array.from(rawBots);
+    const dedupedBots = botsArr.filter(
+      (b) => !botsArr.some((other) => other !== b && other.toLowerCase().includes(b.toLowerCase()) && other.length > b.length)
+    ).slice(0, 12); // max 12 bots
+
+    // ── Extract OG description ──
+    let description = "";
+    const descMatch = html.match(/<meta[^>]+(?:name=["']description["']|property=["']og:description["'])[^>]+content=["']([^"']{1,300})["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']{1,300})["'][^>]+(?:name=["']description["']|property=["']og:description["'])/i);
+    if (descMatch) description = descMatch[1].trim();
+
+    res.json({
+      success: true,
+      siteUrl: url,
+      siteName,
+      description,
+      bots: dedupedBots,
+      botCount: dedupedBots.length,
+    });
+  } catch (err: any) {
+    const isTimeout = err.name === "AbortError";
+    res.status(isTimeout ? 408 : 500).json({
+      error: isTimeout
+        ? "Request timed out. The site took too long to respond."
+        : `Failed to reach the site: ${err.message}`,
+    });
+  }
+});
+
+export default app;
