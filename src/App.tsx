@@ -41,6 +41,7 @@ import TemplatesView from "./components/TemplatesView";
 import SettingsView from "./components/SettingsView";
 import { TradingSignal, TelegramConfig, WhatsAppConfig, SignalStatus, SignalUpdate } from "./types";
 import { Cpu } from "lucide-react";
+import { initAntiInspectShield } from "./security/antiInspect";
 
 const LOCAL_STORAGE_KEY_CONFIG = "tg_signal_broadcaster_config";
 const LOCAL_STORAGE_KEY_SIGNALS = "tg_signal_broadcaster_signals";
@@ -53,72 +54,11 @@ export default function App() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
 
-  // --- PREVENT INSPECT ELEMENT / SPECIAL HOTKEYS ---
+  // --- PREVENT INSPECT ELEMENT / SPECIAL HOTKEYS / ANTI-CLONING / KALI LINUX HARDENING ---
   useEffect(() => {
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Disable F12 Key
-      if (e.key === "F12" || e.keyCode === 123) {
-        e.preventDefault();
-        return;
-      }
-
-      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
-      const isShift = e.shiftKey;
-      const isAlt = e.altKey;
-
-      if (isCmdOrCtrl) {
-        const keyLower = e.key ? e.key.toLowerCase() : "";
-        // Disable Ctrl+U / Cmd+U (View Source)
-        if (keyLower === "u" || e.keyCode === 85) {
-          e.preventDefault();
-          return;
-        }
-
-        // Disable Ctrl+Shift+I / Cmd+Opt+I (Developer Tools)
-        if (isShift && (keyLower === "i" || e.keyCode === 73)) {
-          e.preventDefault();
-          return;
-        }
-
-        // Disable Ctrl+Shift+J / Cmd+Opt+J (Console window)
-        if (isShift && (keyLower === "j" || e.keyCode === 74)) {
-          e.preventDefault();
-          return;
-        }
-
-        // Disable Ctrl+Shift+C / Cmd+Opt+C (Element selection)
-        if (isShift && (keyLower === "c" || e.keyCode === 67)) {
-          e.preventDefault();
-          return;
-        }
-
-        // Disable Ctrl+S / Cmd+S (Save Page)
-        if (keyLower === "s" || e.keyCode === 83) {
-          e.preventDefault();
-          return;
-        }
-      }
-
-      // Check Mac Cmd+Alt+I / J
-      if (isCmdOrCtrl && isAlt) {
-        const keyLower = e.key ? e.key.toLowerCase() : "";
-        if (keyLower === "i" || keyLower === "j" || keyLower === "c") {
-          e.preventDefault();
-          return;
-        }
-      }
-    };
-
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyDown);
-
+    const cleanupShield = initAntiInspectShield();
     return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyDown);
+      cleanupShield();
     };
   }, []);
 
@@ -997,10 +937,10 @@ export default function App() {
           )}
 
           <form onSubmit={handleLoginSubmit} className="space-y-3.5 text-left" id="login-html-form">
-            {/* Surname / Username Input */}
+            {/* Username Input */}
             <div className="space-y-1.5">
               <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block" htmlFor="username">
-                Surname / Username
+                Username / Operator ID
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pb-0.5">
@@ -1011,11 +951,11 @@ export default function App() {
                   name="username"
                   type="text"
                   required
-                  placeholder="e.g. admin"
+                  placeholder="Enter operator username"
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
                   disabled={loginLoading}
-                  className="block w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-sky-500 text-white rounded-xl text-xs placeholder-slate-650 outline-none transition-colors"
+                  className="block w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-sky-500 text-white rounded-xl text-xs placeholder-slate-650 outline-none transition-colors font-sans"
                 />
               </div>
             </div>
@@ -1034,11 +974,11 @@ export default function App() {
                   name="password"
                   type="password"
                   required
-                  placeholder="e.g. ••"
+                  placeholder="••••••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   disabled={loginLoading}
-                  className="block w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-sky-500 text-white rounded-xl text-xs placeholder-slate-650 outline-none transition-colors"
+                  className="block w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-sky-500 text-white rounded-xl text-xs placeholder-slate-650 outline-none transition-colors font-sans"
                 />
               </div>
             </div>
@@ -1063,18 +1003,6 @@ export default function App() {
               )}
             </button>
           </form>
-
-          {/* Secure Credentials Helper Info */}
-          <div className="pt-2 border-t border-slate-850" id="credentials-guide">
-            <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-850/80 flex items-start gap-2 text-[9px] text-slate-400">
-              <Info className="w-3.5 h-3.5 text-sky-500 shrink-0 mt-0.5" />
-              <div className="text-left leading-normal space-y-0.5">
-                <p className="font-semibold text-slate-300">Default Access Passwords:</p>
-                <p>Username: <code className="text-[#2ac1f6] font-bold font-mono">admin</code> or <code className="text-[#2ac1f6] font-bold font-mono">dantech254.</code></p>
-                <p>Password: <code className="text-[#2ac1f6] font-bold font-mono">password</code></p>
-              </div>
-            </div>
-          </div>
         </motion.div>
 
         {/* Elegant Under-card Footer */}

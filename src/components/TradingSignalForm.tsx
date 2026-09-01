@@ -1577,15 +1577,15 @@ export default function TradingSignalForm({
                   <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400/20 animate-pulse" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">AI Raw Data & Prompt Phase Generator</span>
                 </div>
-                <span className="text-[10px] bg-slate-950/80 border border-slate-850 px-2 py-0.5 rounded-lg text-slate-400 font-mono">
-                  Gemini v3.5-Flash
+                <span className="text-[10px] bg-slate-950/80 border border-slate-850 px-2 py-0.5 rounded-lg text-amber-400 font-mono font-bold">
+                  AI Neural Engine
                 </span>
               </div>
 
               <div className="space-y-3 font-sans">
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Paste raw unstructured trading signal texts, bot indicators, or operator instructions below. 
-                  Gemini will analyze the text, extract key asset/order variables, and build <b>Phase 1 (Early Warning)</b>, <b>Phase 2 (Live Entry)</b>, and <b>Phase 3 (Cooldown & Next Scan)</b> HTML broadcasts instantly.
+                  The AI engine will analyze the text, extract key asset/order variables, and build <b>Phase 1 (Early Warning)</b>, <b>Phase 2 (Live Entry)</b>, and <b>Phase 3 (Cooldown & Next Scan)</b> HTML broadcasts instantly.
                 </p>
 
                 <div className="space-y-1.5">
