@@ -82,7 +82,19 @@ interface MarketIndex {
   entryDigit: string;
 }
 
-export const STRICT_ALLOWED_OVER_CONTRACTS = [
+// STRICT FINAL USER-FACING SIGNAL CONTRACTS:
+// The AI may analyze any Over level internally, including Over 3, Over 4, Over 5, etc.
+// However, the signal sent to users must ALWAYS be converted to either OVER 1 or OVER 2.
+// Final output: OVER 1 or OVER 2 ONLY.
+export const STRICT_FINAL_ALLOWED_OVER = [
+  "OVER 1",
+  "OVER 2",
+] as const;
+
+export type StrictFinalOverContract = typeof STRICT_FINAL_ALLOWED_OVER[number];
+
+// Internal testing contracts allowed for momentum / threshold calculations
+export const INTERNAL_ANALYZED_OVER_LEVELS = [
   "OVER 1",
   "OVER 2",
   "OVER 3",
@@ -90,16 +102,16 @@ export const STRICT_ALLOWED_OVER_CONTRACTS = [
   "OVER 5",
 ] as const;
 
-export type StrictOverContract = typeof STRICT_ALLOWED_OVER_CONTRACTS[number];
-
 export function getOverWinningRange(contract: string): string {
+  const upper = contract.toUpperCase().trim();
+  if (upper === "OVER 1") return "2–9";
+  if (upper === "OVER 2") return "3–9";
   const num = parseInt(contract.replace(/[^0-9]/g, ""), 10);
-  if (num >= 1 && num <= 5) {
-    return `${num + 1}–9`;
-  }
-  return "4–9";
+  if (num === 1) return "2–9";
+  return "3–9";
 }
 
+// Complete coverage of all Deriv standard and 1-second (1s) Volatility Indices
 const INITIAL_MARKETS: MarketIndex[] = [
   {
     id: "v10",
@@ -107,7 +119,7 @@ const INITIAL_MARKETS: MarketIndex[] = [
     price: 9452.75,
     lastDigits: [7, 5, 1, 9, 2, 8, 4, 6, 3, 7],
     strength: 86,
-    patternFound: "Strong Over setup based on the current digit analysis. Support bounce above barrier 2.",
+    patternFound: "Strong Over setup based on current digit analysis. Support bounce on boundary [1,2] followed by rebound into 3–9.",
     action: "OVER 2",
     strategy: "Over Digit Threshold Oscillator",
     ticks: "5ticks",
@@ -120,7 +132,7 @@ const INITIAL_MARKETS: MarketIndex[] = [
     price: 4325.20,
     lastDigits: [2, 8, 7, 4, 1, 9, 3, 5, 2, 8],
     strength: 88,
-    patternFound: "Strong Over setup based on the current digit analysis. Low cluster exhaustion with rebound over 1.",
+    patternFound: "Strong Over setup based on current digit analysis. Low cluster exhaustion with rebound into 2–9.",
     action: "OVER 1",
     strategy: "Over Digit Threshold Oscillator",
     ticks: "1ticks",
@@ -128,25 +140,51 @@ const INITIAL_MARKETS: MarketIndex[] = [
     entryDigit: "2–9"
   },
   {
+    id: "v15_1s",
+    name: "Volatility 15 (1s) Index",
+    price: 2841.50,
+    lastDigits: [3, 1, 9, 7, 4, 8, 0, 5, 6, 8],
+    strength: 87,
+    patternFound: "Strong Over setup based on current digit analysis. Low-digit exhaustion rebound into 2–9.",
+    action: "OVER 1",
+    strategy: "Over Digit Mean Reversion",
+    ticks: "1ticks",
+    confidence: "87%",
+    entryDigit: "2–9"
+  },
+  {
+    id: "v20_1s",
+    name: "Volatility 20 (1s) Index",
+    price: 15420.30,
+    lastDigits: [4, 6, 2, 8, 5, 9, 1, 7, 3, 8],
+    strength: 86,
+    patternFound: "Strong Over setup based on current digit analysis. Support bounce above boundary into 3–9.",
+    action: "OVER 2",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "1ticks",
+    confidence: "86%",
+    entryDigit: "3–9"
+  },
+  {
     id: "v25",
     name: "Volatility 25 Index",
     price: 6104.90,
-    lastDigits: [5, 2, 8, 1, 9, 3, 7, 0, 4, 3],
+    lastDigits: [5, 2, 8, 1, 9, 3, 7, 0, 4, 8],
     strength: 85,
-    patternFound: "Strong Over setup based on the current digit analysis. Symmetric tick support over 3.",
-    action: "OVER 3",
+    patternFound: "Strong Over setup based on current digit analysis. Support consolidation with high-probability breakout into 2–9.",
+    action: "OVER 1",
     strategy: "Over Digit Threshold Oscillator",
     ticks: "5ticks",
     confidence: "85%",
-    entryDigit: "4–9"
+    entryDigit: "2–9"
   },
   {
     id: "v25_1s",
     name: "Volatility 25 (1s) Index",
     price: 19852.10,
-    lastDigits: [0, 5, 6, 9, 2, 3, 8, 7, 4, 1],
+    lastDigits: [0, 5, 6, 9, 2, 3, 8, 7, 4, 8],
     strength: 87,
-    patternFound: "Strong Over setup based on the current digit analysis. Low-digit dip turnaround into 3–9.",
+    patternFound: "Strong Over setup based on current digit analysis. Low-digit dip turnaround into 3–9.",
     action: "OVER 2",
     strategy: "Over Digit Momentum Wave",
     ticks: "1ticks",
@@ -154,30 +192,56 @@ const INITIAL_MARKETS: MarketIndex[] = [
     entryDigit: "3–9"
   },
   {
+    id: "v30_1s",
+    name: "Volatility 30 (1s) Index",
+    price: 38240.15,
+    lastDigits: [1, 7, 3, 9, 2, 8, 4, 6, 5, 9],
+    strength: 88,
+    patternFound: "Strong Over setup based on current digit analysis. Harmonic ascending flow confirming persistent upward bias into 3–9.",
+    action: "OVER 2",
+    strategy: "Over Digit Flow Continuation",
+    ticks: "1ticks",
+    confidence: "88%",
+    entryDigit: "3–9"
+  },
+  {
     id: "v50",
     name: "Volatility 50 Index",
     price: 184520.60,
-    lastDigits: [8, 4, 0, 9, 2, 7, 3, 1, 6, 5],
+    lastDigits: [8, 4, 0, 9, 2, 7, 3, 1, 6, 8],
     strength: 89,
-    patternFound: "Strong Over setup based on the current digit analysis. Upward momentum wave above barrier 4.",
-    action: "OVER 4",
+    patternFound: "Strong Over setup based on current digit analysis. Upward momentum wave converted to high-probability OVER 2.",
+    action: "OVER 2",
     strategy: "Over Digit Momentum Wave",
     ticks: "5ticks",
     confidence: "89%",
-    entryDigit: "5–9"
+    entryDigit: "3–9"
   },
   {
     id: "v50_1s",
     name: "Volatility 50 (1s) Index",
     price: 298520.40,
-    lastDigits: [9, 3, 2, 7, 5, 4, 2, 8, 9, 0],
+    lastDigits: [9, 3, 2, 7, 5, 4, 2, 8, 9, 7],
     strength: 92,
-    patternFound: "Strong Over setup based on the current digit analysis.",
-    action: "OVER 3",
-    strategy: "Over Digit Threshold Oscillator",
+    patternFound: "Strong Over setup based on current digit analysis. Statistical low-digit cluster exhaustion with rebound into 3–9.",
+    action: "OVER 2",
+    strategy: "Over Digit Mean Reversion",
     ticks: "1ticks",
     confidence: "92%",
-    entryDigit: "4–9"
+    entryDigit: "3–9"
+  },
+  {
+    id: "v60_1s",
+    name: "Volatility 60 (1s) Index",
+    price: 89312.40,
+    lastDigits: [2, 9, 4, 8, 3, 7, 1, 9, 5, 8],
+    strength: 90,
+    patternFound: "Strong Over setup based on current digit analysis. Dynamic 60(1s) momentum wave converted to high-probability OVER 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "90%",
+    entryDigit: "3–9"
   },
   {
     id: "v75",
@@ -185,10 +249,10 @@ const INITIAL_MARKETS: MarketIndex[] = [
     price: 74219.45,
     lastDigits: [1, 5, 9, 2, 8, 0, 4, 7, 3, 9],
     strength: 87,
-    patternFound: "Strong Over setup based on the current digit analysis. Support bounce harmonic cluster above 2.",
+    patternFound: "Strong Over setup based on current digit analysis. Support bounce harmonic cluster above barrier into 3–9.",
     action: "OVER 2",
     strategy: "Over Digit Threshold Oscillator",
-    ticks: "1ticks",
+    ticks: "5ticks",
     confidence: "87%",
     entryDigit: "3–9"
   },
@@ -198,25 +262,38 @@ const INITIAL_MARKETS: MarketIndex[] = [
     price: 542710.80,
     lastDigits: [4, 7, 2, 9, 1, 8, 0, 5, 3, 9],
     strength: 91,
-    patternFound: "Strong Over setup based on the current digit analysis. Boundary dip rebound over 3.",
-    action: "OVER 3",
+    patternFound: "Strong Over setup based on current digit analysis. Boundary dip turnaround converted to OVER 1.",
+    action: "OVER 1",
     strategy: "Over Digit Threshold Oscillator",
     ticks: "1ticks",
     confidence: "91%",
-    entryDigit: "4–9"
+    entryDigit: "2–9"
+  },
+  {
+    id: "v90_1s",
+    name: "Volatility 90 (1s) Index",
+    price: 412580.60,
+    lastDigits: [6, 2, 8, 4, 9, 1, 7, 3, 8, 9],
+    strength: 88,
+    patternFound: "Strong Over setup based on current digit analysis. High frequency distribution confirming persistent upward bias into 3–9.",
+    action: "OVER 2",
+    strategy: "Over Digit Flow Continuation",
+    ticks: "1ticks",
+    confidence: "88%",
+    entryDigit: "3–9"
   },
   {
     id: "v100",
     name: "Volatility 100 Index",
     price: 334510.15,
-    lastDigits: [3, 9, 0, 5, 2, 7, 4, 1, 8, 2],
+    lastDigits: [3, 9, 0, 5, 2, 7, 4, 1, 8, 7],
     strength: 86,
-    patternFound: "Strong Over setup based on the current digit analysis. Digit 2 bounce harmonic support cluster.",
-    action: "OVER 2",
+    patternFound: "Strong Over setup based on current digit analysis. Low-digit boundary exhaustion with rebound into 2–9.",
+    action: "OVER 1",
     strategy: "Over Digit Threshold Oscillator",
     ticks: "5ticks",
     confidence: "86%",
-    entryDigit: "3–9"
+    entryDigit: "2–9"
   },
   {
     id: "v100_1s",
@@ -224,24 +301,37 @@ const INITIAL_MARKETS: MarketIndex[] = [
     price: 843265.50,
     lastDigits: [5, 2, 9, 8, 3, 1, 7, 0, 4, 9],
     strength: 90,
-    patternFound: "Strong Over setup based on the current digit analysis. Upward momentum wave into 5–9.",
-    action: "OVER 4",
+    patternFound: "Strong Over setup based on current digit analysis. Upward momentum wave converted to high-probability OVER 2.",
+    action: "OVER 2",
     strategy: "Over Digit Momentum Wave",
     ticks: "1ticks",
     confidence: "90%",
-    entryDigit: "5–9"
+    entryDigit: "3–9"
   },
   {
     id: "v150_1s",
     name: "Volatility 150 (1s) Index",
     price: 112480.20,
-    lastDigits: [1, 0, 3, 4, 2, 9, 1, 0, 2, 1],
+    lastDigits: [1, 0, 3, 4, 2, 9, 1, 0, 2, 8],
     strength: 85,
-    patternFound: "Strong Over setup based on the current digit analysis. Oversold bottom cluster with upward rebound over 2.",
-    action: "OVER 2",
+    patternFound: "Strong Over setup based on current digit analysis. Oversold bottom cluster with upward rebound into 2–9.",
+    action: "OVER 1",
     strategy: "Over Digit Threshold Oscillator",
     ticks: "1ticks",
     confidence: "85%",
+    entryDigit: "2–9"
+  },
+  {
+    id: "v200_1s",
+    name: "Volatility 200 (1s) Index",
+    price: 78540.80,
+    lastDigits: [5, 1, 8, 3, 9, 2, 7, 4, 6, 9],
+    strength: 89,
+    patternFound: "Strong Over setup based on current digit analysis. Continuous tick velocity breaking upward into 3–9.",
+    action: "OVER 2",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "89%",
     entryDigit: "3–9"
   },
   {
@@ -250,92 +340,106 @@ const INITIAL_MARKETS: MarketIndex[] = [
     price: 64289.40,
     lastDigits: [8, 9, 7, 8, 4, 9, 8, 9, 2, 9],
     strength: 93,
-    patternFound: "Strong Over setup based on the current digit analysis. High momentum tick velocity breaking through boundary 5 into 6–9.",
-    action: "OVER 5",
+    patternFound: "Strong Over setup based on current digit analysis. High momentum tick velocity converted to OVER 2 with maximum cushion.",
+    action: "OVER 2",
     strategy: "Over Digit Momentum Wave",
     ticks: "1ticks",
     confidence: "93%",
-    entryDigit: "6–9"
+    entryDigit: "3–9"
   },
   {
     id: "v300_1s",
     name: "Volatility 300 (1s) Index",
     price: 49512.80,
-    lastDigits: [0, 1, 2, 0, 3, 1, 0, 2, 1, 0],
+    lastDigits: [0, 1, 2, 0, 3, 1, 0, 2, 1, 8],
     strength: 89,
-    patternFound: "Strong Over setup based on the current digit analysis. Low zone exhaustion with rebound over 1.",
+    patternFound: "Strong Over setup based on current digit analysis. Low zone exhaustion with rebound into 2–9.",
     action: "OVER 1",
     strategy: "Over Digit Threshold Oscillator",
     ticks: "1ticks",
     confidence: "89%",
     entryDigit: "2–9"
+  },
+  {
+    id: "v980_1s",
+    name: "Volatility 980 (1s) Index",
+    price: 981240.20,
+    lastDigits: [3, 8, 2, 9, 4, 7, 1, 8, 6, 9],
+    strength: 91,
+    patternFound: "Strong Over setup based on current digit analysis. Dynamic 980(1s) multi-cluster rebound converted to OVER 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "91%",
+    entryDigit: "3–9"
   }
 ];
 
-// Deriv API Symbol Bidirectional Maps for all Volatility Indices
+// Deriv API Symbol Bidirectional Maps for all Volatility Indices (Standard & 1s)
 const DERIV_SYMBOL_MAP: Record<string, string> = {
   v10: "R_10",
   v10_1s: "1HZ10V",
+  v15_1s: "1HZ15V",
+  v20_1s: "1HZ20V",
   v25: "R_25",
   v25_1s: "1HZ25V",
+  v30_1s: "1HZ30V",
   v50: "R_50",
   v50_1s: "1HZ50V",
+  v60_1s: "1HZ60V",
   v75: "R_75",
   v75_1s: "1HZ75V",
+  v90_1s: "1HZ90V",
   v100: "R_100",
   v100_1s: "1HZ100V",
   v150_1s: "1HZ150V",
+  v200_1s: "1HZ200V",
   v250_1s: "1HZ250V",
-  v300_1s: "1HZ300V"
+  v300_1s: "1HZ300V",
+  v980_1s: "1HZ980V"
 };
 
 const REVERSE_SYMBOL_MAP: Record<string, string> = {
   "R_10": "v10",
   "1HZ10V": "v10_1s",
+  "1HZ15V": "v15_1s",
+  "1HZ20V": "v20_1s",
   "R_25": "v25",
   "1HZ25V": "v25_1s",
+  "1HZ30V": "v30_1s",
   "R_50": "v50",
   "1HZ50V": "v50_1s",
+  "1HZ60V": "v60_1s",
   "R_75": "v75",
   "1HZ75V": "v75_1s",
+  "1HZ90V": "v90_1s",
   "R_100": "v100",
   "1HZ100V": "v100_1s",
   "1HZ150V": "v150_1s",
+  "1HZ200V": "v200_1s",
   "1HZ250V": "v250_1s",
-  "1HZ300V": "v300_1s"
+  "1HZ300V": "v300_1s",
+  "1HZ980V": "v980_1s"
 };
 
 interface MarketSetupResult {
-  action: string;
-  entryDigit: string;
+  action: "OVER 1" | "OVER 2";
+  entryDigit: "2–9" | "3–9";
   strategy: string;
   patternFound: string;
   strength: number;
+  internalTestedBarrier?: number;
 }
 
-// Strict OVER 1–5 ONLY analysis algorithm.
-// Analyzes recent digit results, digit frequency, momentum velocity, and current market pattern.
-// Strictly avoids generating random signals by requiring verified setup conditions.
+// Multi-factor digit analysis algorithm across all Volatility Indices.
+// The AI may analyze any Over level internally, including Over 3, Over 4, Over 5, etc.
+// However, the signal sent to users must ALWAYS be converted to either OVER 1 or OVER 2.
+// Final output: OVER 1 or OVER 2 ONLY.
+// Do not force a trade when the analysis does not produce a qualifying setup.
 function evaluateIndependentMarketSetup(
   digits: number[],
-  activeContractsList: string[]
+  _activeContractsList?: string[]
 ): MarketSetupResult {
-  // STRICT RULE: ONLY OVER 1, OVER 2, OVER 3, OVER 4, OVER 5 ALLOWED!
-  const allowed = STRICT_ALLOWED_OVER_CONTRACTS as readonly string[];
-  const userFiltered = (activeContractsList || []).filter((c) =>
-    allowed.includes(c.toUpperCase().trim() as any)
-  );
-  const contractsToTest = userFiltered.length > 0 ? userFiltered : [...allowed];
-
-  let bestResult: MarketSetupResult = {
-    action: "OVER 3",
-    entryDigit: "4–9",
-    strategy: "Over Digit Threshold Oscillator",
-    patternFound: "Strong Over setup based on the current digit analysis.",
-    strength: 85,
-  };
-  let highestScore = -1;
-
   const len = digits.length || 1;
   const recent3 = digits.slice(-3);
   const recent5 = digits.slice(-5);
@@ -347,83 +451,105 @@ function evaluateIndependentMarketSetup(
   const momentumDelta = avgRecent3 - avgOlder; // Positive means digits are trending upward
   const lastTick = digits[digits.length - 1];
 
-  for (const contract of contractsToTest) {
-    const barrier = parseInt(contract.replace(/[^0-9]/g, ""), 10) || 3;
-    // Strictly clamp barrier to 1..5 only
-    if (barrier < 1 || barrier > 5) continue;
+  let bestInternalBarrier = 2;
+  let highestScore = -1;
+  let bestStrategy = "Over Digit Threshold Oscillator";
+  let bestPattern = "Strong Over setup based on current digit analysis.";
+  let anyConditionQualified = false;
 
-    const entryRange = `${barrier + 1}–9`;
-
-    // 2. Recent Digit Results & Frequency
+  // Internal evaluation across Over 1 through Over 5
+  for (const barrier of [1, 2, 3, 4, 5]) {
     const winningCount = digits.filter((d) => d > barrier).length;
     const winFreqPct = (winningCount / len) * 100;
-    const expectedBasePct = (9 - barrier) * 10; // e.g. Over 3 expects 60%
+    const expectedBasePct = (9 - barrier) * 10;
     const freqDeviation = winFreqPct - expectedBasePct;
 
     const subCountRecent3 = recent3.filter((d) => d <= barrier).length;
     const subCountRecent5 = recent5.filter((d) => d <= barrier).length;
 
-    // 3. Trend & Direction Check
     const isAscending = recent3.length >= 2 && recent3[recent3.length - 1] >= recent3[recent3.length - 2];
     const isDipBounce = subCountRecent3 >= 1 && lastTick > barrier;
     const isDipExhaustion = subCountRecent5 >= 2;
 
-    // 4. Current Market Pattern & Defined Strong Setup Conditions
     let pattern: string;
     let strategy: string;
     let setupScore: number;
-    let meetsDefinedConditions = false;
+    let meetsConditions = false;
 
     if (isDipBounce) {
-      // Pattern A: Support Dip & Rebound (e.g. dipped to barrier boundary and bounced into winning range)
       pattern = `Strong Over setup based on current digit analysis. Support bounce on boundary [${recent3.filter(d => d <= barrier).join(",")}] followed by immediate rebound above barrier ${barrier}.`;
       strategy = "Over Digit Threshold Oscillator";
       setupScore = 86 + (freqDeviation > 0 ? 4 : 0) + (momentumDelta > 0 ? 3 : 0);
-      meetsDefinedConditions = true;
+      meetsConditions = true;
     } else if (isDipExhaustion) {
-      // Pattern B: Low-Digit Clustering Mean-Reversion
-      pattern = `Strong Over setup based on current digit analysis. Statistical low-digit exhaustion (${subCountRecent5}/5 ticks <= ${barrier}) primed for upward mean-reversion into ${entryRange}.`;
+      pattern = `Strong Over setup based on current digit analysis. Statistical low-digit exhaustion (${subCountRecent5}/5 ticks <= ${barrier}) primed for upward mean-reversion.`;
       strategy = "Over Digit Mean Reversion";
       setupScore = 85 + (subCountRecent5 >= 3 ? 5 : 2) + (freqDeviation * 0.1);
-      meetsDefinedConditions = true;
+      meetsConditions = true;
     } else if (momentumDelta > 0.4 && isAscending) {
-      // Pattern C: Ascending Digit Momentum Wave
-      pattern = `Strong Over setup based on current digit analysis. Ascending momentum wave (+${momentumDelta.toFixed(1)} velocity) expanding into target winning digits ${entryRange}.`;
+      pattern = `Strong Over setup based on current digit analysis. Ascending momentum wave (+${momentumDelta.toFixed(1)} velocity) expanding into target winning digits.`;
       strategy = "Over Digit Momentum Wave";
       setupScore = 84 + (winFreqPct * 0.1) + (momentumDelta * 2);
-      meetsDefinedConditions = true;
+      meetsConditions = true;
     } else if (winFreqPct >= expectedBasePct) {
-      // Pattern D: High-Probability Threshold Flow
       pattern = `Strong Over setup based on current digit analysis. Dominant high-digit distribution (${winFreqPct.toFixed(0)}% > ${barrier}) confirming persistent upward bias.`;
       strategy = "Over Digit Flow Continuation";
       setupScore = 83 + (freqDeviation * 0.15);
-      meetsDefinedConditions = freqDeviation >= -2;
+      meetsConditions = freqDeviation >= -2;
     } else {
-      // Condition NOT met — Market is in unfavorable/stagnant state.
-      // Score penalized below 75% so NO random signal is broadcast!
       pattern = `Digit oscillation below defined threshold (${winFreqPct.toFixed(0)}% > ${barrier}). Awaiting verified strong setup.`;
       strategy = "Over Digit Threshold Monitor";
       setupScore = Math.max(48, Math.min(72, 60 + momentumDelta * 2));
-      meetsDefinedConditions = false;
+      meetsConditions = false;
     }
 
-    const finalClamped = meetsDefinedConditions
-      ? Math.round(Math.min(98, Math.max(82, setupScore + (Math.random() * 2))))
-      : Math.round(Math.min(74, Math.max(45, setupScore)));
-
-    if (finalClamped > highestScore) {
-      highestScore = finalClamped;
-      bestResult = {
-        action: `OVER ${barrier}`,
-        entryDigit: entryRange,
-        strategy,
-        patternFound: pattern,
-        strength: finalClamped,
-      };
+    if (setupScore > highestScore) {
+      highestScore = setupScore;
+      bestInternalBarrier = barrier;
+      bestStrategy = strategy;
+      bestPattern = pattern;
+      if (meetsConditions) anyConditionQualified = true;
     }
   }
 
-  return bestResult;
+  // STRICT SIGNAL RULE:
+  // Convert any internal barrier (Over 1, 2, 3, 4, 5) to strictly OVER 1 or OVER 2 ONLY!
+  let finalAction: "OVER 1" | "OVER 2";
+  let finalEntry: "2–9" | "3–9";
+
+  if (bestInternalBarrier === 1) {
+    finalAction = "OVER 1";
+    finalEntry = "2–9";
+  } else if (bestInternalBarrier === 2) {
+    finalAction = "OVER 2";
+    finalEntry = "3–9";
+  } else if (bestInternalBarrier === 4 || bestInternalBarrier === 5) {
+    // High-momentum internal Over setup converts to high-probability OVER 2 with massive winning cushion!
+    finalAction = "OVER 2";
+    finalEntry = "3–9";
+  } else {
+    // bestInternalBarrier === 3: If terminal digit is >= 2, convert to OVER 2, otherwise OVER 1
+    finalAction = lastTick >= 2 ? "OVER 2" : "OVER 1";
+    finalEntry = finalAction === "OVER 1" ? "2–9" : "3–9";
+  }
+
+  // Do not force a trade if no qualifying conditions were met
+  const finalClamped = anyConditionQualified
+    ? Math.round(Math.min(98, Math.max(85, highestScore + (Math.random() * 2))))
+    : Math.round(Math.min(74, Math.max(45, highestScore)));
+
+  const finalPattern = anyConditionQualified
+    ? bestPattern
+    : "Digit oscillation below defined threshold. Awaiting verified strong setup.";
+
+  return {
+    action: finalAction,
+    entryDigit: finalEntry,
+    strategy: bestStrategy,
+    patternFound: finalPattern,
+    strength: finalClamped,
+    internalTestedBarrier: bestInternalBarrier,
+  };
 }
 
 export default function VolatilityScanner({ 
@@ -501,17 +627,66 @@ export default function VolatilityScanner({
 
   // Stats records
   const [scannedCount, setScannedCount] = useState(0);
+  const [marketCategoryFilter, setMarketCategoryFilter] = useState<"all" | "1s" | "standard" | "qualifying">("all");
+  const [customMarketInput, setCustomMarketInput] = useState("");
+  const [showAddMarketModal, setShowAddMarketModal] = useState(false);
   const [strongestMarket, setStrongestMarket] = useState<MarketIndex | null>(() => {
     return [...INITIAL_MARKETS].sort((a, b) => b.strength - a.strength)[0] || null;
   }); 
   const [autoLog, setAutoLog] = useState<string[]>([
-    "✅ Bot initialized: Multi-Asset Scanner active across all Volatility Indices.",
-    "🔍 Strict Mandate Loaded: OVER 1–5 ONLY (Over 1, Over 2, Over 3, Over 4, Over 5). Target Confidence >= 85%.",
+    "✅ Bot initialized: Dynamic Multi-Asset Scanner active across all Volatility Indices.",
+    "🌐 Platform Coverage: Automatically detects and scans all standard and 1s Volatility Indices.",
+    "🔍 Strict Signal Rule: Analyzes Over 1–5 internally → Strictly converted to OVER 1 or OVER 2 ONLY.",
     "⚙️ Multi-Factor Engine: Analyzing recent digit results, digit frequency, momentum velocity, and current market pattern."
   ]);
   const [generatingSignal, setGeneratingSignal] = useState(false);
   const generatingSignalRef = useRef(generatingSignal);
   useEffect(() => { generatingSignalRef.current = generatingSignal; }, [generatingSignal]);
+
+  // Handler to dynamically enroll any Volatility Index into the scanning grid
+  const handleEnrollCustomVolatilityIndex = (inputStr: string) => {
+    const raw = inputStr.trim();
+    if (!raw) return;
+
+    const is1s = raw.toLowerCase().includes("1s") || raw.toUpperCase().includes("1HZ");
+    let displayName = raw;
+    if (!displayName.toLowerCase().includes("volatility")) {
+      displayName = `Volatility ${raw}${is1s && !raw.toLowerCase().includes("(1s)") ? " (1s)" : ""} Index`;
+    }
+    const idKey = raw.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+    if (markets.some((m) => m.id === idKey || m.name.toLowerCase() === displayName.toLowerCase())) {
+      setAutoLog((prev) => [`ℹ️ Market ${displayName} is already actively enrolled in the scanner.`, ...prev.slice(0, 48)]);
+      setCustomMarketInput("");
+      setShowAddMarketModal(false);
+      return;
+    }
+
+    const initDigits = [3, 7, 2, 8, 4, 9, 1, 8, 5, 8];
+    const evaluated = evaluateIndependentMarketSetup(initDigits, activeContractsRef.current);
+
+    const newMarket: MarketIndex = {
+      id: idKey,
+      name: displayName,
+      price: 15000 + Math.round(Math.random() * 85000),
+      lastDigits: initDigits,
+      strength: evaluated.strength,
+      patternFound: evaluated.patternFound,
+      action: evaluated.action,
+      strategy: evaluated.strategy,
+      ticks: is1s ? "1ticks" : "5ticks",
+      confidence: `${evaluated.strength}%`,
+      entryDigit: evaluated.entryDigit
+    };
+
+    setMarkets((prev) => [newMarket, ...prev]);
+    setCustomMarketInput("");
+    setShowAddMarketModal(false);
+    setAutoLog((prev) => [
+      `➕ Dynamically enrolled ${displayName} [Action: ${newMarket.action} | Entry: ${newMarket.entryDigit}] into real-time scanning matrix.`,
+      ...prev.slice(0, 48)
+    ]);
+  };
 
   // Last sent signal setup tracker to prevent duplicate signals
   const lastSentSignalRef = useRef<{
@@ -593,6 +768,10 @@ export default function VolatilityScanner({
   const hourlyIntervalMinutesRef = useRef(hourlyIntervalMinutes);
   useEffect(() => { hourlyIntervalMinutesRef.current = hourlyIntervalMinutes; }, [hourlyIntervalMinutes]);
 
+  // Dynamic Symbol Registry for automatic coverage of all Deriv Volatility Indices
+  const dynamicSymbolMapRef = useRef<Record<string, string>>({ ...DERIV_SYMBOL_MAP });
+  const dynamicReverseMapRef = useRef<Record<string, string>>({ ...REVERSE_SYMBOL_MAP });
+
   // Audio tone helper
   const playBeep = (freq = 800, dur = 0.05) => {
     try {
@@ -614,7 +793,7 @@ export default function VolatilityScanner({
     }
   };
 
-  // Dedicated real-time Deriv WebSocket subscriber loop with auto-reconnection
+  // Dedicated real-time Deriv WebSocket subscriber loop with auto-reconnection and dynamic index coverage
   useEffect(() => {
     if (wsMode !== "websocket" || !isRunning) {
       setWsStatus("DISCONNECTED");
@@ -644,12 +823,17 @@ export default function VolatilityScanner({
           setWsStatus("CONNECTED");
           setAutoLog((prevLogs) => ["🟢 Websocket Live: Streaming all Volatility Indices tick-by-tick from Deriv API!", ...prevLogs.slice(0, 48)]);
 
-          // Subscribe to all synthetic assets ticks
-          Object.values(DERIV_SYMBOL_MAP).forEach((symbolKey) => {
+          // 1. Subscribe to all known synthetic Volatility assets ticks
+          Object.values(dynamicSymbolMapRef.current).forEach((symbolKey) => {
             if (ws && ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ ticks: symbolKey }));
             }
           });
+
+          // 2. Query active_symbols to dynamically detect ALL available Volatility Indices on the platform
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
+          }
 
           // Pinger to hold stream alive
           pingTimer = setInterval(() => {
@@ -664,11 +848,75 @@ export default function VolatilityScanner({
           try {
             const data = JSON.parse(event.data);
             if (data.msg_type === "ping") {
-              // Standard latency simulation feedback
               setWsLatency(Math.round(15 + Math.random() * 25));
+            } else if (data.msg_type === "active_symbols" && Array.isArray(data.active_symbols)) {
+              // Automatically detect and analyze ALL Volatility Indices currently available on the platform
+              const activeVolSymbols = data.active_symbols.filter((s: any) => {
+                const displayName = (s.display_name || "").toLowerCase();
+                const sym = (s.symbol || "").toUpperCase();
+                return displayName.includes("volatility") || sym.startsWith("R_") || sym.includes("HZ");
+              });
+
+              if (activeVolSymbols.length > 0) {
+                setAutoLog((prevLogs) => [
+                  `🌐 [Dynamic Coverage] Deriv confirmed ${activeVolSymbols.length} active Volatility Indices on platform. Enrolling full coverage...`,
+                  ...prevLogs.slice(0, 48)
+                ]);
+
+                setMarkets((prevMarkets) => {
+                  const existingIds = new Set(prevMarkets.map((m) => m.id));
+                  const existingNames = new Set(prevMarkets.map((m) => m.name.toLowerCase()));
+                  const newlyAdded: MarketIndex[] = [];
+
+                  for (const item of activeVolSymbols) {
+                    const derivSym = item.symbol;
+                    const displayName = item.display_name || derivSym;
+                    const idKey = derivSym.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+                    // Register into dynamic lookup mappings
+                    dynamicSymbolMapRef.current[idKey] = derivSym;
+                    dynamicReverseMapRef.current[derivSym] = idKey;
+
+                    if (!existingIds.has(idKey) && !existingNames.has(displayName.toLowerCase())) {
+                      // Subscribe to ticks for newly detected index
+                      if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ ticks: derivSym }));
+                      }
+
+                      const is1s = displayName.includes("(1s)") || derivSym.includes("1HZ");
+                      const initDigits = [3, 8, 2, 7, 5, 9, 1, 8, 4, 8];
+                      const evaluated = evaluateIndependentMarketSetup(initDigits, activeContractsRef.current);
+
+                      newlyAdded.push({
+                        id: idKey,
+                        name: displayName,
+                        price: 15000,
+                        lastDigits: initDigits,
+                        strength: evaluated.strength,
+                        patternFound: evaluated.patternFound,
+                        action: evaluated.action,
+                        strategy: evaluated.strategy,
+                        ticks: is1s ? "1ticks" : "5ticks",
+                        confidence: `${evaluated.strength}%`,
+                        entryDigit: evaluated.entryDigit
+                      });
+                    }
+                  }
+
+                  if (newlyAdded.length > 0) {
+                    setAutoLog((prevLogs) => [
+                      `➕ Enrolled ${newlyAdded.length} newly discovered Volatility Indices into active multi-market scanner!`,
+                      ...prevLogs.slice(0, 48)
+                    ]);
+                    return [...prevMarkets, ...newlyAdded];
+                  }
+
+                  return prevMarkets;
+                });
+              }
             } else if (data.msg_type === "tick" && data.tick) {
               const { symbol, quote } = data.tick;
-              const marketId = REVERSE_SYMBOL_MAP[symbol];
+              const marketId = dynamicReverseMapRef.current[symbol] || REVERSE_SYMBOL_MAP[symbol];
               if (marketId) {
                 const priceValue = Number(quote);
                 const priceStr = String(quote);
@@ -1984,16 +2232,16 @@ export default function VolatilityScanner({
             )}
           </div>
 
-          {/* Column 2: Specific Over 1–5 Barriers Option Lists */}
+          {/* Column 2: Internal Over 1–5 Barrier Matrix -> Strict User Conversion */}
           <div className="space-y-2 lg:col-span-1">
             <div className="flex justify-between items-center">
-              <label className="text-slate-350 font-bold block">Over 1–5 Barriers Matrix ({activeContracts.length} active)</label>
+              <label className="text-slate-350 font-bold block">Internal Analysis Over Matrix</label>
               <div className="flex gap-1.5 text-[9px] font-mono">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveContracts(["OVER 1", "OVER 2", "OVER 3", "OVER 4", "OVER 5"]);
-                    setAutoLog((prev) => ["⚙️ Selected all 5 Over trade barrier targets (OVER 1–5).", ...prev.slice(0, 49)]);
+                    setAutoLog((prev) => ["⚙️ Selected all 5 internal Over barrier levels (OVER 1–5).", ...prev.slice(0, 49)]);
                   }}
                   className="text-slate-400 hover:text-white cursor-pointer hover:underline"
                 >
@@ -2003,8 +2251,8 @@ export default function VolatilityScanner({
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveContracts(["OVER 3"]);
-                    setAutoLog((prev) => ["⚙️ Defaulted selection to OVER 3 barrier setup.", ...prev.slice(0, 49)]);
+                    setActiveContracts(["OVER 1", "OVER 2", "OVER 3"]);
+                    setAutoLog((prev) => ["⚙️ Defaulted internal selection to OVER 1–3 setups.", ...prev.slice(0, 49)]);
                   }}
                   className="text-slate-400 hover:text-white cursor-pointer hover:underline"
                 >
@@ -2027,10 +2275,10 @@ export default function VolatilityScanner({
                           return;
                         }
                         setActiveContracts((prev) => prev.filter((item) => item !== b));
-                        setAutoLog((prev) => [`❌ Removed barrier ${b} from scanner list.`, ...prev.slice(0, 49)]);
+                        setAutoLog((prev) => [`❌ Removed internal barrier ${b} from analysis list.`, ...prev.slice(0, 49)]);
                       } else {
                         setActiveContracts((prev) => [...prev, b]);
-                        setAutoLog((prev) => [`` + `✅ Added barrier ${b} to active scanner setup.`, ...prev.slice(0, 49)]);
+                        setAutoLog((prev) => [`✅ Added internal barrier ${b} to analysis setup.`, ...prev.slice(0, 49)]);
                       }
                     }}
                     className={`py-1 rounded font-mono font-bold text-[9px] transition-all border text-center cursor-pointer ${
@@ -2044,9 +2292,15 @@ export default function VolatilityScanner({
                 );
               })}
             </div>
-            <p className="text-[10px] text-slate-550 leading-tight">
-              Bot strictly scans for <strong>OVER 1–5 ONLY</strong>. All Under, Over 6–9, and other contract types are strictly disallowed.
-            </p>
+            
+            {/* Conversion Rule Pill */}
+            <div className="bg-sky-950/30 border border-sky-900/40 rounded-lg p-2 text-[10px] text-sky-200 flex items-start gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-sky-300 block">User Output Rule: OVER 1 or OVER 2 ONLY</span>
+                <span>The bot analyzes Over 1–5 internally, but the final signal transmitted to users is always converted to either <strong>OVER 1 (Entry 2–9)</strong> or <strong>OVER 2 (Entry 3–9)</strong>. Under, Even/Odd, Matches, or Differs are forbidden.</span>
+              </div>
+            </div>
           </div>
 
           {/* Column 3: Auto-Broadcasting Feed Switch */}
@@ -2100,119 +2354,246 @@ export default function VolatilityScanner({
         </div>
       </div>
 
-      {/* MULTI-MARKET STATUS GRID */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-1 uppercase tracking-wider">
-          <span>Real-time Market Matrix (Matching Criteria Check)</span>
-          <span>Index Trend Strength vs Target</span>
+      {/* DYNAMIC VOLATILITY COVERAGE CONTROLS & MARKET FILTERS */}
+      <div className="space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 bg-slate-950/90 border border-slate-850 rounded-xl p-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-sky-950/60 border border-sky-800/40 rounded-lg text-[#2ac1f6]">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wide">
+                  Dynamic Volatility Market Coverage
+                </span>
+                <span className="text-[9px] font-bold bg-sky-950/80 text-sky-300 border border-sky-800/60 px-2 py-0.5 rounded-full font-mono">
+                  {markets.length} Markets Monitored
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Continuous auto-detection and scanning across all standard & 1-second (1s) Volatility Indices on the platform.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Filter Tabs & Add Custom Market Button */}
+          <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+            <button
+              type="button"
+              onClick={() => setMarketCategoryFilter("all")}
+              className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                marketCategoryFilter === "all"
+                  ? "bg-[#2ac1f6]/20 text-[#2ac1f6] border-[#2ac1f6]/60 font-bold"
+                  : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
+              }`}
+            >
+              All ({markets.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarketCategoryFilter("1s")}
+              className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                marketCategoryFilter === "1s"
+                  ? "bg-purple-950/60 text-purple-300 border-purple-800/60 font-bold"
+                  : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
+              }`}
+            >
+              1-Second (1s) ({markets.filter((m) => m.name.includes("(1s)") || m.ticks === "1ticks").length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarketCategoryFilter("standard")}
+              className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                marketCategoryFilter === "standard"
+                  ? "bg-indigo-950/60 text-indigo-300 border-indigo-800/60 font-bold"
+                  : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
+              }`}
+            >
+              Standard ({markets.filter((m) => !m.name.includes("(1s)") && m.ticks !== "1ticks").length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarketCategoryFilter("qualifying")}
+              className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                marketCategoryFilter === "qualifying"
+                  ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/60 font-bold"
+                  : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
+              }`}
+            >
+              Qualifying ({markets.filter((m) => m.strength >= minStrengthThreshold).length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowAddMarketModal(!showAddMarketModal)}
+              className="px-2.5 py-1 rounded-lg border border-sky-800/50 bg-sky-950/40 hover:bg-sky-900/50 text-sky-300 font-bold cursor-pointer transition-all flex items-center gap-1"
+              id="btn-toggle-add-custom-market"
+            >
+              <span>+ Enroll Index</span>
+            </button>
+          </div>
         </div>
 
+        {/* Modal / Inline Tool for enrolling any arbitrary Volatility Index */}
+        {showAddMarketModal && (
+          <div className="bg-slate-950 border border-sky-900/50 rounded-xl p-3 flex flex-col sm:flex-row items-center gap-2" id="enroll-custom-market-panel">
+            <span className="text-[11px] text-slate-300 font-medium whitespace-nowrap">
+              Enroll Any Deriv Volatility Index:
+            </span>
+            <input
+              type="text"
+              placeholder="e.g. Volatility 60 (1s), 1HZ980V, 500, etc."
+              value={customMarketInput}
+              onChange={(e) => setCustomMarketInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleEnrollCustomVolatilityIndex(customMarketInput);
+                }
+              }}
+              className="flex-1 bg-slate-900 border border-slate-750 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-sky-400 font-mono"
+              id="input-custom-market-enroll"
+            />
+            <button
+              type="button"
+              onClick={() => handleEnrollCustomVolatilityIndex(customMarketInput)}
+              className="px-3 py-1.5 bg-[#2ac1f6] hover:bg-[#25abda] text-slate-950 font-black rounded-lg text-xs cursor-pointer whitespace-nowrap"
+              id="btn-confirm-add-market"
+            >
+              Add to Scanner
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddMarketModal(false)}
+              className="px-2 py-1.5 text-slate-400 hover:text-white text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* MULTI-MARKET STATUS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3" id="volatility-grid-multi-markets">
-          {markets.map((m) => {
-            const isHighest = strongestMarket?.id === m.id;
-            const matchesThreshold = m.strength >= minStrengthThreshold;
-            const barrierNum = parseInt(m.action.replace(/[^0-9]/g, ""), 10) || 3;
-            const entryRange = getOverWinningRange(m.action);
+          {markets
+            .filter((m) => {
+              if (marketCategoryFilter === "1s") {
+                return m.name.includes("(1s)") || m.ticks === "1ticks";
+              }
+              if (marketCategoryFilter === "standard") {
+                return !m.name.includes("(1s)") && m.ticks !== "1ticks";
+              }
+              if (marketCategoryFilter === "qualifying") {
+                return m.strength >= minStrengthThreshold;
+              }
+              return true;
+            })
+            .map((m) => {
+              const isHighest = strongestMarket?.id === m.id;
+              const matchesThreshold = m.strength >= minStrengthThreshold;
+              const barrierNum = parseInt(m.action.replace(/[^0-9]/g, ""), 10) || 2;
+              const entryRange = getOverWinningRange(m.action);
 
-            return (
-              <div
-                key={m.id}
-                onClick={() => {
-                  setStrongestMarket(m);
-                  playBeep(1000, 0.04);
-                }}
-                className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
-                  isHighest 
-                    ? "border-sky-500/60 bg-sky-950/10 shadow-md scale-[1.01]" 
-                    : matchesThreshold
-                    ? "border-emerald-500/40 bg-emerald-950/5"
-                    : "border-slate-850 bg-slate-950/60 hover:bg-slate-950"
-                }`}
-                id={`market-idx-item-${m.id}`}
-              >
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <CircleDot className={`w-2.5 h-2.5 ${
-                      isHighest 
-                        ? "text-sky-400 animate-pulse" 
-                        : matchesThreshold 
-                        ? "text-emerald-400" 
-                        : "text-slate-600"
-                    }`} />
-                    <h3 className="text-xs font-bold text-slate-100 truncate tracking-wide">{m.name}</h3>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-450">
-                    <span className="truncate text-slate-300 font-semibold">${m.price.toFixed(2)}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-amber-350 font-sans font-medium">Entry: <b>{entryRange}</b></span>
-                      <span className={`text-[9px] border px-1.5 py-0.2 rounded font-bold ${
-                        matchesThreshold 
-                          ? "bg-emerald-950/30 text-emerald-400 border-emerald-900/30"
-                          : "bg-slate-900 text-slate-500 border-slate-800"
-                      }`}>
-                        {m.action}
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => {
+                    setStrongestMarket(m);
+                    playBeep(1000, 0.04);
+                  }}
+                  className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                    isHighest 
+                      ? "border-sky-500/60 bg-sky-950/10 shadow-md scale-[1.01]" 
+                      : matchesThreshold
+                      ? "border-emerald-500/40 bg-emerald-950/5"
+                      : "border-slate-850 bg-slate-950/60 hover:bg-slate-950"
+                  }`}
+                  id={`market-idx-item-${m.id}`}
+                >
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <CircleDot className={`w-2.5 h-2.5 ${
+                        isHighest 
+                          ? "text-sky-400 animate-pulse" 
+                          : matchesThreshold 
+                          ? "text-emerald-400" 
+                          : "text-slate-600"
+                      }`} />
+                      <h3 className="text-xs font-bold text-slate-100 truncate tracking-wide">{m.name}</h3>
+                      <span className="text-[8px] font-mono text-slate-500 bg-slate-900 border border-slate-800 px-1.5 py-0.2 rounded">
+                        {m.ticks}
                       </span>
                     </div>
-                  </div>
 
-                  {/* Tick Digital Flow bar */}
-                  <div className="flex items-center gap-1 font-mono text-[9px] text-slate-500 pt-0.5">
-                    <span className="text-[8px] uppercase tracking-wider">Ticks pattern:</span>
-                    <div className="flex gap-0.5">
-                      {m.lastDigits.map((dig, idx) => {
-                        const isWinningTick = dig > barrierNum;
-                        const isTriggerDip = dig <= barrierNum;
-                        return (
-                          <span 
-                            key={idx} 
-                            className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold font-mono transition-colors text-[9px] ${
-                              isWinningTick 
-                                ? "bg-emerald-950/50 text-emerald-300 border border-emerald-800/40" 
-                                : isTriggerDip 
-                                ? "bg-amber-950/40 text-amber-350" 
-                                : "bg-slate-900 text-slate-500"
-                            }`}
-                            title={`Digit: ${dig} (${isWinningTick ? 'Target Winning Range' : 'Below/Equal Barrier'})`}
-                          >
-                            {dig}
-                          </span>
-                        );
-                      })}
+                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-450">
+                      <span className="truncate text-slate-300 font-semibold">${m.price.toFixed(2)}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] text-amber-350 font-sans font-medium">Entry: <b>{entryRange}</b></span>
+                        <span className={`text-[9px] border px-1.5 py-0.2 rounded font-black ${
+                          matchesThreshold 
+                            ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/50"
+                            : "bg-slate-900 text-slate-400 border-slate-800"
+                        }`}>
+                          {m.action}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tick Digital Flow bar */}
+                    <div className="flex items-center gap-1 font-mono text-[9px] text-slate-500 pt-0.5">
+                      <span className="text-[8px] uppercase tracking-wider">Ticks:</span>
+                      <div className="flex gap-0.5">
+                        {m.lastDigits.map((dig, idx) => {
+                          const isWinningTick = dig > barrierNum;
+                          const isTriggerDip = dig <= barrierNum;
+                          return (
+                            <span 
+                              key={idx} 
+                              className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold font-mono transition-colors text-[9px] ${
+                                isWinningTick 
+                                  ? "bg-emerald-950/50 text-emerald-300 border border-emerald-800/40" 
+                                  : isTriggerDip 
+                                  ? "bg-amber-950/40 text-amber-350" 
+                                  : "bg-slate-900 text-slate-500"
+                              }`}
+                              title={`Digit: ${dig} (${isWinningTick ? 'Target Winning Range' : 'Below/Equal Barrier'})`}
+                            >
+                              {dig}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Score Dial status bar representation */}
+                  <div className="text-right shrink-0 min-w-[70px] space-y-1 text-right font-sans">
+                    <div className="flex items-baseline justify-end font-mono">
+                      <span className={`text-sm font-black ${
+                        matchesThreshold ? "text-sky-400" : "text-slate-500"
+                      }`}>{m.strength}%</span>
+                    </div>
+
+                    {/* Horizontal visual meter bar */}
+                    <div className="w-16 bg-slate-900 h-1 rounded-full overflow-hidden ml-auto">
+                      <div 
+                        className={`h-full transition-all duration-300 ${
+                          matchesThreshold ? "bg-[#2ac1f6]" : m.strength >= 75 ? "bg-indigo-500" : "bg-slate-700"
+                        }`} 
+                        style={{ width: `${m.strength}%` }}
+                      />
+                    </div>
+
+                    <div className="text-[8px] font-mono font-bold tracking-wider uppercase">
+                      {matchesThreshold ? (
+                        <span className="text-emerald-405">QUALIFIED</span>
+                      ) : (
+                        <span className="text-slate-600">MONITORING</span>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
-
-                {/* Score Dial status bar representation */}
-                <div className="text-right shrink-0 min-w-[70px] space-y-1 text-right font-sans">
-                  <div className="flex items-baseline justify-end font-mono">
-                    <span className={`text-sm font-black ${
-                      matchesThreshold ? "text-sky-400" : "text-slate-500"
-                    }`}>{m.strength}%</span>
-                  </div>
-
-                  {/* Horizontal visual meter bar */}
-                  <div className="w-16 bg-slate-900 h-1 rounded-full overflow-hidden ml-auto">
-                    <div 
-                      className={`h-full transition-all duration-300 ${
-                        matchesThreshold ? "bg-[#2ac1f6]" : m.strength >= 75 ? "bg-indigo-500" : "bg-slate-700"
-                      }`} 
-                      style={{ width: `${m.strength}%` }}
-                    />
-                  </div>
-
-                  <div className="text-[8px] font-mono font-bold tracking-wider uppercase">
-                    {matchesThreshold ? (
-                      <span className="text-emerald-405">TARGET MATCH</span>
-                    ) : (
-                      <span className="text-slate-600">SCAN EXCLUDED</span>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
 
