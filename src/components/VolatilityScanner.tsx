@@ -361,6 +361,45 @@ const INITIAL_MARKETS: MarketIndex[] = [
     entryDigit: "2–9"
   },
   {
+    id: "v600_1s",
+    name: "Volatility 600 (1s) Index",
+    price: 612480.30,
+    lastDigits: [7, 2, 8, 4, 9, 3, 8, 5, 2, 8],
+    strength: 90,
+    patternFound: "Strong Over setup based on current digit analysis. Ascending velocity rebound converted to OVER 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "90%",
+    entryDigit: "3–9"
+  },
+  {
+    id: "v900_1s",
+    name: "Volatility 900 (1s) Index",
+    price: 904120.70,
+    lastDigits: [1, 8, 3, 9, 4, 8, 2, 7, 5, 8],
+    strength: 88,
+    patternFound: "Strong Over setup based on current digit analysis. Support threshold bounce converted to OVER 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Flow Continuation",
+    ticks: "1ticks",
+    confidence: "88%",
+    entryDigit: "3–9"
+  },
+  {
+    id: "v950_1s",
+    name: "Volatility 950 (1s) Index",
+    price: 954890.15,
+    lastDigits: [0, 9, 2, 8, 1, 7, 3, 8, 4, 9],
+    strength: 91,
+    patternFound: "Strong Over setup based on current digit analysis. Dynamic micro-dip rebound converted to OVER 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "91%",
+    entryDigit: "3–9"
+  },
+  {
     id: "v980_1s",
     name: "Volatility 980 (1s) Index",
     price: 981240.20,
@@ -396,6 +435,9 @@ const DERIV_SYMBOL_MAP: Record<string, string> = {
   v200_1s: "1HZ200V",
   v250_1s: "1HZ250V",
   v300_1s: "1HZ300V",
+  v600_1s: "1HZ600V",
+  v900_1s: "1HZ900V",
+  v950_1s: "1HZ950V",
   v980_1s: "1HZ980V"
 };
 
@@ -419,8 +461,24 @@ const REVERSE_SYMBOL_MAP: Record<string, string> = {
   "1HZ200V": "v200_1s",
   "1HZ250V": "v250_1s",
   "1HZ300V": "v300_1s",
+  "1HZ600V": "v600_1s",
+  "1HZ900V": "v900_1s",
+  "1HZ950V": "v950_1s",
   "1HZ980V": "v980_1s"
 };
+
+// Strict filter to exclude Volatility 75 from all signal selections
+export function isExcludedVolatility75(nameOrId: string): boolean {
+  if (!nameOrId) return false;
+  const clean = nameOrId.toUpperCase().trim();
+  return (
+    clean.includes("75") ||
+    clean === "V75" ||
+    clean === "V75_1S" ||
+    clean === "R_75" ||
+    clean === "1HZ75V"
+  );
+}
 
 interface MarketSetupResult {
   action: "OVER 1" | "OVER 2";
@@ -631,11 +689,16 @@ export default function VolatilityScanner({
   const [customMarketInput, setCustomMarketInput] = useState("");
   const [showAddMarketModal, setShowAddMarketModal] = useState(false);
   const [strongestMarket, setStrongestMarket] = useState<MarketIndex | null>(() => {
-    return [...INITIAL_MARKETS].sort((a, b) => b.strength - a.strength)[0] || null;
+    return (
+      [...INITIAL_MARKETS]
+        .filter((m) => !isExcludedVolatility75(m.name) && !isExcludedVolatility75(m.id))
+        .sort((a, b) => b.strength - a.strength)[0] || null
+    );
   }); 
   const [autoLog, setAutoLog] = useState<string[]>([
     "✅ Bot initialized: Dynamic Multi-Asset Scanner active across all Volatility Indices.",
-    "🌐 Platform Coverage: Automatically detects and scans all standard and 1s Volatility Indices.",
+    "🔄 Active Market Rotation: Volatility 75 strictly excluded from signals; rotates through all other indices.",
+    "🌐 Platform Coverage: Continuously monitors Volatility 10, 25, 50, 60, 100, 150, 250, 300, 600, 900, 950, 980 (1s & standard).",
     "🔍 Strict Signal Rule: Analyzes Over 1–5 internally → Strictly converted to OVER 1 or OVER 2 ONLY.",
     "⚙️ Multi-Factor Engine: Analyzing recent digit results, digit frequency, momentum velocity, and current market pattern."
   ]);
@@ -697,33 +760,56 @@ export default function VolatilityScanner({
     sentAt: number;
   } | null>(null);
 
-  // Selector helper that picks the strongest available setup while strictly avoiding duplicate signals
+  // Rotation history tracking to ensure active diversification across different Volatility Indices
+  const recentDispatchedMarketsRef = useRef<string[]>([]);
+
+  // Selector helper that strictly excludes Volatility 75 and enforces active rotation across all other Volatility Indices
   const selectStrongestNonDuplicateMarket = (
     sortedMarkets: MarketIndex[],
     minThreshold: number = 0
-  ): MarketIndex => {
-    const lastSent = lastSentSignalRef.current;
-    if (!lastSent || sortedMarkets.length === 0) {
-      return sortedMarkets[0];
-    }
-
-    // Filter out the exact same setup (same market name and same action)
-    const candidates = sortedMarkets.filter((m) => {
-      if (m.strength < minThreshold) return false;
-      const isDuplicate = m.name === lastSent.marketName && m.action === lastSent.action;
-      return !isDuplicate;
-    });
-
-    if (candidates.length > 0) {
-      return candidates[0];
-    }
-
-    // If no candidate is above threshold, pick the strongest market with a different setup
-    const alternative = sortedMarkets.find(
-      (m) => m.name !== lastSent.marketName || m.action !== lastSent.action
+  ): MarketIndex | null => {
+    // 1. Exclude Volatility 75 completely from signal selection per strict directive
+    const non75Markets = sortedMarkets.filter(
+      (m) => !isExcludedVolatility75(m.name) && !isExcludedVolatility75(m.id)
     );
 
-    return alternative || sortedMarkets[0];
+    if (non75Markets.length === 0) {
+      return null;
+    }
+
+    // 2. Filter candidate markets that meet or exceed the required minimum threshold
+    const qualifying = non75Markets.filter((m) => m.strength >= minThreshold);
+
+    if (qualifying.length === 0) {
+      // Do not force a trade if no other market currently meets the required conditions
+      return null;
+    }
+
+    // 3. Market Rotation: Prioritize markets that have NOT been recently dispatched
+    const recent = recentDispatchedMarketsRef.current;
+    const lastSent = lastSentSignalRef.current;
+
+    // Filter out markets that were used in the last 4 dispatched signals
+    const unvisitedCandidates = qualifying.filter((m) => {
+      if (lastSent && m.name === lastSent.marketName && m.action === lastSent.action) {
+        return false;
+      }
+      return !recent.slice(-4).includes(m.id) && !recent.slice(-4).includes(m.name);
+    });
+
+    if (unvisitedCandidates.length > 0) {
+      // Pick the strongest among fresh unvisited markets
+      return unvisitedCandidates.sort((a, b) => b.strength - a.strength)[0];
+    }
+
+    // If all qualifying markets were in recent rotation, pick the one dispatched longest ago
+    const rotated = [...qualifying].sort((a, b) => {
+      const idxA = Math.max(recent.lastIndexOf(a.id), recent.lastIndexOf(a.name));
+      const idxB = Math.max(recent.lastIndexOf(b.id), recent.lastIndexOf(b.name));
+      return idxA - idxB;
+    });
+
+    return rotated[0] || qualifying[0];
   };
 
   // Keep references to prevent async closure state mismatches
@@ -1058,17 +1144,24 @@ export default function VolatilityScanner({
             setTimeout(() => {
               // Ensure we ONLY dispatch if the scanner is in SCANNING state and not currently generating
               if (scannerStateRef.current === "SCANNING" && !generatingSignalRef.current) {
-                // Select strongest market dynamically across all Volatility Indices
+                // Select strongest market dynamically across all Volatility Indices (excluding Volatility 75 with active rotation)
                 const sorted = [...marketsRef.current].sort((a, b) => b.strength - a.strength);
-                const topMarket = selectStrongestNonDuplicateMarket(sorted);
+                const topMarket = selectStrongestNonDuplicateMarket(sorted, minStrengthThresholdRef.current);
                 
-                setAutoLog((prevLogs) => [
-                  `⏰ [MULTI-MARKET DISPATCH] Cadence countdown completed! Auto-broadcasting top setup across all Volatility Indices (Interval: ${formatCadenceValue(hourlyIntervalMinutesRef.current)})...`,
-                  `🏆 Selected market: ${topMarket.name} [${topMarket.action} | Confidence: ${topMarket.strength}%]`,
-                  ...prevLogs.slice(0, 48)
-                ]);
-                
-                handleTriggerDetection(topMarket);
+                if (topMarket) {
+                  setAutoLog((prevLogs) => [
+                    `⏰ [MULTI-MARKET ROTATION DISPATCH] Cadence countdown completed! Auto-broadcasting top setup across rotating Volatility Indices (Interval: ${formatCadenceValue(hourlyIntervalMinutesRef.current)})...`,
+                    `🏆 Selected rotating market: ${topMarket.name} [${topMarket.action} | Confidence: ${topMarket.strength}%]`,
+                    ...prevLogs.slice(0, 48)
+                  ]);
+                  
+                  handleTriggerDetection(topMarket);
+                } else {
+                  setAutoLog((prevLogs) => [
+                    `⏳ [ROTATION HOLD] Cadence countdown reached 0, but no non-75 Volatility Index meets qualification (>= ${minStrengthThresholdRef.current}%). Waiting for next valid opportunity instead of forcing a signal.`,
+                    ...prevLogs.slice(0, 48)
+                  ]);
+                }
               } else {
                 setAutoLog((prevLogs) => [
                   `⚠️ [HOURLY DISPATCH SUPPRESSED] Countdown reached 0 cycle, but scanner is active/cooldown (State: ${scannerStateRef.current}, Generating: ${generatingSignalRef.current}). Overlapping signal omitted to remain with exactly one live signal.`,
@@ -1335,10 +1428,13 @@ export default function VolatilityScanner({
     };
   }, []);
 
-  // Sync strongest market when markets updates, outside of render/state calculations
+  // Sync strongest market when markets updates, outside of render/state calculations (excluding Volatility 75)
   useEffect(() => {
     if (markets.length === 0) return;
-    const strongest = [...markets].sort((a, b) => b.strength - a.strength)[0];
+    const non75 = [...markets].filter(
+      (m) => !isExcludedVolatility75(m.name) && !isExcludedVolatility75(m.id)
+    );
+    const strongest = non75.sort((a, b) => b.strength - a.strength)[0];
     if (strongest) {
       setStrongestMarket(strongest);
     }
@@ -1409,6 +1505,41 @@ export default function VolatilityScanner({
       return;
     }
 
+    // 1. Strict Exclusion of Volatility 75: Intercept and rotate to another available Volatility Index
+    if (isExcludedVolatility75(targetMarket.name) || isExcludedVolatility75(targetMarket.id)) {
+      setAutoLog((prev) => [
+        `🛡️ [Rule Enforced] Volatility 75 (${targetMarket.name}) excluded from signal selection. Intercepting and rotating to another available Volatility Index...`,
+        ...prev.slice(0, 48)
+      ]);
+      const sorted = [...marketsRef.current].sort((a, b) => b.strength - a.strength);
+      const alt = selectStrongestNonDuplicateMarket(sorted, minStrengthThresholdRef.current);
+      if (!alt) {
+        setAutoLog((prev) => [
+          `⏳ No alternative non-75 Volatility Index currently qualifies (>= ${minStrengthThresholdRef.current}%). Waiting for next valid opportunity instead of forcing a signal.`,
+          ...prev.slice(0, 48)
+        ]);
+        return;
+      }
+      targetMarket = alt;
+    }
+
+    // 2. Strict Signal Conversion: Convert any incoming action (Over 3, Over 4, Over 5, etc.) to strictly OVER 1 or OVER 2 ONLY!
+    let sanitizedAction: "OVER 1" | "OVER 2" = "OVER 1";
+    if (targetMarket.action === "OVER 2") {
+      sanitizedAction = "OVER 2";
+    } else if (targetMarket.action === "OVER 1") {
+      sanitizedAction = "OVER 1";
+    } else {
+      // If internal analysis was Over 3 or above, convert to OVER 1 or OVER 2 based on momentum/strength
+      sanitizedAction = targetMarket.strength >= 90 ? "OVER 2" : "OVER 1";
+    }
+    const finalWinningRange = getOverWinningRange(sanitizedAction);
+    targetMarket = {
+      ...targetMarket,
+      action: sanitizedAction,
+      entryDigit: finalWinningRange
+    };
+
     // Deduplication check: rotate to alternative market setup if duplicate within immediate cycle
     if (
       lastSentSignalRef.current &&
@@ -1425,6 +1556,13 @@ export default function VolatilityScanner({
         ]);
         targetMarket = alt;
       }
+    }
+
+    // Record in rotation history queue
+    recentDispatchedMarketsRef.current.push(targetMarket.id);
+    recentDispatchedMarketsRef.current.push(targetMarket.name);
+    if (recentDispatchedMarketsRef.current.length > 24) {
+      recentDispatchedMarketsRef.current = recentDispatchedMarketsRef.current.slice(-24);
     }
 
     lastSentSignalRef.current = {
@@ -1612,13 +1750,21 @@ export default function VolatilityScanner({
       return;
     }
 
-    // Select the strongest non-duplicate index setup across all Volatility Indices
+    // Select the strongest non-duplicate index setup across all available non-75 Volatility Indices
     const sorted = [...markets].sort((a, b) => b.strength - a.strength);
-    const top = selectStrongestNonDuplicateMarket(sorted);
+    const top = selectStrongestNonDuplicateMarket(sorted, minStrengthThreshold);
     
+    if (!top) {
+      setAutoLog((prev) => [
+        `⏳ Manual scan completed: No non-75 Volatility Index currently meets threshold (>= ${minStrengthThreshold}%). Waiting for next valid setup instead of forcing trade.`,
+        ...prev.slice(0, 48)
+      ]);
+      return;
+    }
+
     setAutoLog((prev) => [
-      `🎯 Multi-market scan evaluation requested. Intercepting tick waves across all Volatility Indices...`,
-      `🏆 Peak setup identified: ${top.name} [${top.action} | Confidence: ${top.strength}% | Entry: Digit ${top.entryDigit}]`,
+      `🎯 Multi-market scan evaluation requested. Intercepting tick waves across rotating Volatility Indices...`,
+      `🏆 Peak setup identified: ${top.name} [${top.action} | Confidence: ${top.strength}% | Entry: Digit ${top.entryDigit}] (Volatility 75 excluded, rotating active markets)`,
       ...prev.slice(0, 48)
     ]);
 
