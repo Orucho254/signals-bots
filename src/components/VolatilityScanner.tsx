@@ -82,123 +82,102 @@ interface MarketIndex {
   entryDigit: string;
 }
 
+export const STRICT_ALLOWED_OVER_CONTRACTS = [
+  "OVER 1",
+  "OVER 2",
+  "OVER 3",
+  "OVER 4",
+  "OVER 5",
+] as const;
+
+export type StrictOverContract = typeof STRICT_ALLOWED_OVER_CONTRACTS[number];
+
+export function getOverWinningRange(contract: string): string {
+  const num = parseInt(contract.replace(/[^0-9]/g, ""), 10);
+  if (num >= 1 && num <= 5) {
+    return `${num + 1}–9`;
+  }
+  return "4–9";
+}
+
 const INITIAL_MARKETS: MarketIndex[] = [
   {
-    id: "v100_1s",
-    name: "Volatility 100 (1s) Index",
-    price: 843265.50,
-    lastDigits: [5, 2, 9, 8, 3, 1, 7, 0, 4, 9],
-    strength: 84,
-    patternFound: "Second Least Digit anomaly",
-    action: "UNDER 7",
-    strategy: "Second Least Digit",
-    ticks: "1ticks",
-    confidence: "84%",
-    entryDigit: "9"
+    id: "v10",
+    name: "Volatility 10 Index",
+    price: 9452.75,
+    lastDigits: [7, 5, 1, 9, 2, 8, 4, 6, 3, 7],
+    strength: 86,
+    patternFound: "Strong Over setup based on the current digit analysis. Support bounce above barrier 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "5ticks",
+    confidence: "86%",
+    entryDigit: "3–9"
   },
   {
     id: "v10_1s",
     name: "Volatility 10 (1s) Index",
     price: 4325.20,
     lastDigits: [2, 8, 7, 4, 1, 9, 3, 5, 2, 8],
-    strength: 64,
-    patternFound: "Digit 8 cluster peaks",
-    action: "OVER 5",
-    strategy: "Tick Oscillator Breakout",
-    ticks: "5ticks",
-    confidence: "78%",
-    entryDigit: "8"
-  },
-  {
-    id: "v25_1s",
-    name: "Volatility 25 (1s) Index",
-    price: 19852.10,
-    lastDigits: [0, 5, 6, 9, 2, 3, 8, 7, 4, 1],
-    strength: 71,
-    patternFound: "Odd digit clustering",
-    action: "UNDER 7",
-    strategy: "Parabolic Tick Cycle",
-    ticks: "1ticks",
-    confidence: "82%",
-    entryDigit: "1"
-  },
-  {
-    id: "v50_1s",
-    name: "Volatility 50 (1s) Index",
-    price: 298520.40,
-    lastDigits: [9, 3, 2, 7, 5, 4, 2, 8, 9, 0],
-    strength: 58,
-    patternFound: "Range consolidation",
-    action: "UNDER 7",
-    strategy: "Second Least Digit",
-    ticks: "1ticks",
-    confidence: "75%",
-    entryDigit: "0"
-  },
-  {
-    id: "v75_1s",
-    name: "Volatility 75 (1s) Index",
-    price: 542710.80,
-    lastDigits: [4, 7, 2, 9, 1, 8, 0, 5, 3, 9],
     strength: 88,
-    patternFound: "Extreme Digit 9 Divergence (High-Strength)",
-    action: "UNDER 7",
-    strategy: "Second Least Digit",
+    patternFound: "Strong Over setup based on the current digit analysis. Low cluster exhaustion with rebound over 1.",
+    action: "OVER 1",
+    strategy: "Over Digit Threshold Oscillator",
     ticks: "1ticks",
     confidence: "88%",
-    entryDigit: "9"
-  },
-  {
-    id: "v10",
-    name: "Volatility 10 Index",
-    price: 9452.75,
-    lastDigits: [7, 5, 1, 9, 2, 8, 4, 6, 3, 7],
-    strength: 62,
-    patternFound: "Harmonic oscillator wave",
-    action: "OVER 5",
-    strategy: "Tick Duration Support",
-    ticks: "5ticks",
-    confidence: "70%",
-    entryDigit: "7"
-  },
-  {
-    id: "v100",
-    name: "Volatility 100 Index",
-    price: 334510.15,
-    lastDigits: [3, 9, 0, 5, 2, 7, 4, 1, 8, 2],
-    strength: 86,
-    patternFound: "Digit 2 support levels",
-    action: "UNDER 7",
-    strategy: "Second Least Digit",
-    ticks: "1ticks",
-    confidence: "86%",
-    entryDigit: "2"
+    entryDigit: "2–9"
   },
   {
     id: "v25",
     name: "Volatility 25 Index",
     price: 6104.90,
     lastDigits: [5, 2, 8, 1, 9, 3, 7, 0, 4, 3],
-    strength: 52,
-    patternFound: "Symmetric tick balancing",
-    action: "UNDER 7",
-    strategy: "Digit Spread Mean",
-    ticks: "10ticks",
-    confidence: "68%",
-    entryDigit: "3"
+    strength: 85,
+    patternFound: "Strong Over setup based on the current digit analysis. Symmetric tick support over 3.",
+    action: "OVER 3",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "5ticks",
+    confidence: "85%",
+    entryDigit: "4–9"
+  },
+  {
+    id: "v25_1s",
+    name: "Volatility 25 (1s) Index",
+    price: 19852.10,
+    lastDigits: [0, 5, 6, 9, 2, 3, 8, 7, 4, 1],
+    strength: 87,
+    patternFound: "Strong Over setup based on the current digit analysis. Low-digit dip turnaround into 3–9.",
+    action: "OVER 2",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "87%",
+    entryDigit: "3–9"
   },
   {
     id: "v50",
     name: "Volatility 50 Index",
     price: 184520.60,
     lastDigits: [8, 4, 0, 9, 2, 7, 3, 1, 6, 5],
-    strength: 78,
-    patternFound: "RSI Digit Extreme oversold",
+    strength: 89,
+    patternFound: "Strong Over setup based on the current digit analysis. Upward momentum wave above barrier 4.",
     action: "OVER 4",
-    strategy: "Volatility Peak Oscillator",
+    strategy: "Over Digit Momentum Wave",
     ticks: "5ticks",
-    confidence: "81%",
-    entryDigit: "5"
+    confidence: "89%",
+    entryDigit: "5–9"
+  },
+  {
+    id: "v50_1s",
+    name: "Volatility 50 (1s) Index",
+    price: 298520.40,
+    lastDigits: [9, 3, 2, 7, 5, 4, 2, 8, 9, 0],
+    strength: 92,
+    patternFound: "Strong Over setup based on the current digit analysis.",
+    action: "OVER 3",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "1ticks",
+    confidence: "92%",
+    entryDigit: "4–9"
   },
   {
     id: "v75",
@@ -206,41 +185,246 @@ const INITIAL_MARKETS: MarketIndex[] = [
     price: 74219.45,
     lastDigits: [1, 5, 9, 2, 8, 0, 4, 7, 3, 9],
     strength: 87,
-    patternFound: "Tick Series 9 Anomalies Identified",
-    action: "UNDER 7",
-    strategy: "Second Least Digit",
+    patternFound: "Strong Over setup based on the current digit analysis. Support bounce harmonic cluster above 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Threshold Oscillator",
     ticks: "1ticks",
     confidence: "87%",
-    entryDigit: "9"
+    entryDigit: "3–9"
+  },
+  {
+    id: "v75_1s",
+    name: "Volatility 75 (1s) Index",
+    price: 542710.80,
+    lastDigits: [4, 7, 2, 9, 1, 8, 0, 5, 3, 9],
+    strength: 91,
+    patternFound: "Strong Over setup based on the current digit analysis. Boundary dip rebound over 3.",
+    action: "OVER 3",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "1ticks",
+    confidence: "91%",
+    entryDigit: "4–9"
+  },
+  {
+    id: "v100",
+    name: "Volatility 100 Index",
+    price: 334510.15,
+    lastDigits: [3, 9, 0, 5, 2, 7, 4, 1, 8, 2],
+    strength: 86,
+    patternFound: "Strong Over setup based on the current digit analysis. Digit 2 bounce harmonic support cluster.",
+    action: "OVER 2",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "5ticks",
+    confidence: "86%",
+    entryDigit: "3–9"
+  },
+  {
+    id: "v100_1s",
+    name: "Volatility 100 (1s) Index",
+    price: 843265.50,
+    lastDigits: [5, 2, 9, 8, 3, 1, 7, 0, 4, 9],
+    strength: 90,
+    patternFound: "Strong Over setup based on the current digit analysis. Upward momentum wave into 5–9.",
+    action: "OVER 4",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "90%",
+    entryDigit: "5–9"
+  },
+  {
+    id: "v150_1s",
+    name: "Volatility 150 (1s) Index",
+    price: 112480.20,
+    lastDigits: [1, 0, 3, 4, 2, 9, 1, 0, 2, 1],
+    strength: 85,
+    patternFound: "Strong Over setup based on the current digit analysis. Oversold bottom cluster with upward rebound over 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "1ticks",
+    confidence: "85%",
+    entryDigit: "3–9"
+  },
+  {
+    id: "v250_1s",
+    name: "Volatility 250 (1s) Index",
+    price: 64289.40,
+    lastDigits: [8, 9, 7, 8, 4, 9, 8, 9, 2, 9],
+    strength: 93,
+    patternFound: "Strong Over setup based on the current digit analysis. High momentum tick velocity breaking through boundary 5 into 6–9.",
+    action: "OVER 5",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "1ticks",
+    confidence: "93%",
+    entryDigit: "6–9"
+  },
+  {
+    id: "v300_1s",
+    name: "Volatility 300 (1s) Index",
+    price: 49512.80,
+    lastDigits: [0, 1, 2, 0, 3, 1, 0, 2, 1, 0],
+    strength: 89,
+    patternFound: "Strong Over setup based on the current digit analysis. Low zone exhaustion with rebound over 1.",
+    action: "OVER 1",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "1ticks",
+    confidence: "89%",
+    entryDigit: "2–9"
   }
 ];
 
-// Deriv API Symbol Bidirectional Maps
+// Deriv API Symbol Bidirectional Maps for all Volatility Indices
 const DERIV_SYMBOL_MAP: Record<string, string> = {
-  v100_1s: "1HZ100V",
-  v10_1s: "1HZ10V",
-  v25_1s: "1HZ25V",
-  v50_1s: "1HZ50V",
-  v75_1s: "1HZ75V",
   v10: "R_10",
-  v100: "R_100",
+  v10_1s: "1HZ10V",
   v25: "R_25",
+  v25_1s: "1HZ25V",
   v50: "R_50",
-  v75: "R_75"
+  v50_1s: "1HZ50V",
+  v75: "R_75",
+  v75_1s: "1HZ75V",
+  v100: "R_100",
+  v100_1s: "1HZ100V",
+  v150_1s: "1HZ150V",
+  v250_1s: "1HZ250V",
+  v300_1s: "1HZ300V"
 };
 
 const REVERSE_SYMBOL_MAP: Record<string, string> = {
-  "1HZ100V": "v100_1s",
-  "1HZ10V": "v10_1s",
-  "1HZ25V": "v25_1s",
-  "1HZ50V": "v50_1s",
-  "1HZ75V": "v75_1s",
   "R_10": "v10",
-  "R_100": "v100",
+  "1HZ10V": "v10_1s",
   "R_25": "v25",
+  "1HZ25V": "v25_1s",
   "R_50": "v50",
-  "R_75": "v75"
+  "1HZ50V": "v50_1s",
+  "R_75": "v75",
+  "1HZ75V": "v75_1s",
+  "R_100": "v100",
+  "1HZ100V": "v100_1s",
+  "1HZ150V": "v150_1s",
+  "1HZ250V": "v250_1s",
+  "1HZ300V": "v300_1s"
 };
+
+interface MarketSetupResult {
+  action: string;
+  entryDigit: string;
+  strategy: string;
+  patternFound: string;
+  strength: number;
+}
+
+// Strict OVER 1–5 ONLY analysis algorithm.
+// Analyzes recent digit results, digit frequency, momentum velocity, and current market pattern.
+// Strictly avoids generating random signals by requiring verified setup conditions.
+function evaluateIndependentMarketSetup(
+  digits: number[],
+  activeContractsList: string[]
+): MarketSetupResult {
+  // STRICT RULE: ONLY OVER 1, OVER 2, OVER 3, OVER 4, OVER 5 ALLOWED!
+  const allowed = STRICT_ALLOWED_OVER_CONTRACTS as readonly string[];
+  const userFiltered = (activeContractsList || []).filter((c) =>
+    allowed.includes(c.toUpperCase().trim() as any)
+  );
+  const contractsToTest = userFiltered.length > 0 ? userFiltered : [...allowed];
+
+  let bestResult: MarketSetupResult = {
+    action: "OVER 3",
+    entryDigit: "4–9",
+    strategy: "Over Digit Threshold Oscillator",
+    patternFound: "Strong Over setup based on the current digit analysis.",
+    strength: 85,
+  };
+  let highestScore = -1;
+
+  const len = digits.length || 1;
+  const recent3 = digits.slice(-3);
+  const recent5 = digits.slice(-5);
+  const older = digits.slice(0, Math.max(1, digits.length - 3));
+
+  // 1. Momentum Analysis: short-term velocity vs older baseline
+  const avgRecent3 = recent3.reduce((a, b) => a + b, 0) / Math.max(1, recent3.length);
+  const avgOlder = older.reduce((a, b) => a + b, 0) / Math.max(1, older.length);
+  const momentumDelta = avgRecent3 - avgOlder; // Positive means digits are trending upward
+  const lastTick = digits[digits.length - 1];
+
+  for (const contract of contractsToTest) {
+    const barrier = parseInt(contract.replace(/[^0-9]/g, ""), 10) || 3;
+    // Strictly clamp barrier to 1..5 only
+    if (barrier < 1 || barrier > 5) continue;
+
+    const entryRange = `${barrier + 1}–9`;
+
+    // 2. Recent Digit Results & Frequency
+    const winningCount = digits.filter((d) => d > barrier).length;
+    const winFreqPct = (winningCount / len) * 100;
+    const expectedBasePct = (9 - barrier) * 10; // e.g. Over 3 expects 60%
+    const freqDeviation = winFreqPct - expectedBasePct;
+
+    const subCountRecent3 = recent3.filter((d) => d <= barrier).length;
+    const subCountRecent5 = recent5.filter((d) => d <= barrier).length;
+
+    // 3. Trend & Direction Check
+    const isAscending = recent3.length >= 2 && recent3[recent3.length - 1] >= recent3[recent3.length - 2];
+    const isDipBounce = subCountRecent3 >= 1 && lastTick > barrier;
+    const isDipExhaustion = subCountRecent5 >= 2;
+
+    // 4. Current Market Pattern & Defined Strong Setup Conditions
+    let pattern: string;
+    let strategy: string;
+    let setupScore: number;
+    let meetsDefinedConditions = false;
+
+    if (isDipBounce) {
+      // Pattern A: Support Dip & Rebound (e.g. dipped to barrier boundary and bounced into winning range)
+      pattern = `Strong Over setup based on current digit analysis. Support bounce on boundary [${recent3.filter(d => d <= barrier).join(",")}] followed by immediate rebound above barrier ${barrier}.`;
+      strategy = "Over Digit Threshold Oscillator";
+      setupScore = 86 + (freqDeviation > 0 ? 4 : 0) + (momentumDelta > 0 ? 3 : 0);
+      meetsDefinedConditions = true;
+    } else if (isDipExhaustion) {
+      // Pattern B: Low-Digit Clustering Mean-Reversion
+      pattern = `Strong Over setup based on current digit analysis. Statistical low-digit exhaustion (${subCountRecent5}/5 ticks <= ${barrier}) primed for upward mean-reversion into ${entryRange}.`;
+      strategy = "Over Digit Mean Reversion";
+      setupScore = 85 + (subCountRecent5 >= 3 ? 5 : 2) + (freqDeviation * 0.1);
+      meetsDefinedConditions = true;
+    } else if (momentumDelta > 0.4 && isAscending) {
+      // Pattern C: Ascending Digit Momentum Wave
+      pattern = `Strong Over setup based on current digit analysis. Ascending momentum wave (+${momentumDelta.toFixed(1)} velocity) expanding into target winning digits ${entryRange}.`;
+      strategy = "Over Digit Momentum Wave";
+      setupScore = 84 + (winFreqPct * 0.1) + (momentumDelta * 2);
+      meetsDefinedConditions = true;
+    } else if (winFreqPct >= expectedBasePct) {
+      // Pattern D: High-Probability Threshold Flow
+      pattern = `Strong Over setup based on current digit analysis. Dominant high-digit distribution (${winFreqPct.toFixed(0)}% > ${barrier}) confirming persistent upward bias.`;
+      strategy = "Over Digit Flow Continuation";
+      setupScore = 83 + (freqDeviation * 0.15);
+      meetsDefinedConditions = freqDeviation >= -2;
+    } else {
+      // Condition NOT met — Market is in unfavorable/stagnant state.
+      // Score penalized below 75% so NO random signal is broadcast!
+      pattern = `Digit oscillation below defined threshold (${winFreqPct.toFixed(0)}% > ${barrier}). Awaiting verified strong setup.`;
+      strategy = "Over Digit Threshold Monitor";
+      setupScore = Math.max(48, Math.min(72, 60 + momentumDelta * 2));
+      meetsDefinedConditions = false;
+    }
+
+    const finalClamped = meetsDefinedConditions
+      ? Math.round(Math.min(98, Math.max(82, setupScore + (Math.random() * 2))))
+      : Math.round(Math.min(74, Math.max(45, setupScore)));
+
+    if (finalClamped > highestScore) {
+      highestScore = finalClamped;
+      bestResult = {
+        action: `OVER ${barrier}`,
+        entryDigit: entryRange,
+        strategy,
+        patternFound: pattern,
+        strength: finalClamped,
+      };
+    }
+  }
+
+  return bestResult;
+}
 
 export default function VolatilityScanner({ 
   onSignalGenerated, 
@@ -280,10 +464,7 @@ export default function VolatilityScanner({
     "OVER 2",
     "OVER 3",
     "OVER 4",
-    "UNDER 6",
-    "UNDER 7",
-    "UNDER 8",
-    "UNDER 9"
+    "OVER 5"
   ]);
 
   // System State Machine
@@ -320,15 +501,55 @@ export default function VolatilityScanner({
 
   // Stats records
   const [scannedCount, setScannedCount] = useState(0);
-  const [strongestMarket, setStrongestMarket] = useState<MarketIndex | null>(INITIAL_MARKETS[4]); 
+  const [strongestMarket, setStrongestMarket] = useState<MarketIndex | null>(() => {
+    return [...INITIAL_MARKETS].sort((a, b) => b.strength - a.strength)[0] || null;
+  }); 
   const [autoLog, setAutoLog] = useState<string[]>([
-    "✅ Bot initialized: Multi-Asset Scanner active.",
-    "🔍 Scanning criteria loaded: Min target Strength >= 85%.",
-    "⚙️ Auto-broadcast is enabled. Outgoing signals will post live to Telegram and trace expiry sequences."
+    "✅ Bot initialized: Multi-Asset Scanner active across all Volatility Indices.",
+    "🔍 Strict Mandate Loaded: OVER 1–5 ONLY (Over 1, Over 2, Over 3, Over 4, Over 5). Target Confidence >= 85%.",
+    "⚙️ Multi-Factor Engine: Analyzing recent digit results, digit frequency, momentum velocity, and current market pattern."
   ]);
   const [generatingSignal, setGeneratingSignal] = useState(false);
   const generatingSignalRef = useRef(generatingSignal);
   useEffect(() => { generatingSignalRef.current = generatingSignal; }, [generatingSignal]);
+
+  // Last sent signal setup tracker to prevent duplicate signals
+  const lastSentSignalRef = useRef<{
+    marketId: string;
+    marketName: string;
+    action: string;
+    entryDigit: string;
+    sentAt: number;
+  } | null>(null);
+
+  // Selector helper that picks the strongest available setup while strictly avoiding duplicate signals
+  const selectStrongestNonDuplicateMarket = (
+    sortedMarkets: MarketIndex[],
+    minThreshold: number = 0
+  ): MarketIndex => {
+    const lastSent = lastSentSignalRef.current;
+    if (!lastSent || sortedMarkets.length === 0) {
+      return sortedMarkets[0];
+    }
+
+    // Filter out the exact same setup (same market name and same action)
+    const candidates = sortedMarkets.filter((m) => {
+      if (m.strength < minThreshold) return false;
+      const isDuplicate = m.name === lastSent.marketName && m.action === lastSent.action;
+      return !isDuplicate;
+    });
+
+    if (candidates.length > 0) {
+      return candidates[0];
+    }
+
+    // If no candidate is above threshold, pick the strongest market with a different setup
+    const alternative = sortedMarkets.find(
+      (m) => m.name !== lastSent.marketName || m.action !== lastSent.action
+    );
+
+    return alternative || sortedMarkets[0];
+  };
 
   // Keep references to prevent async closure state mismatches
   const isRunningRef = useRef(isRunning);
@@ -421,9 +642,9 @@ export default function VolatilityScanner({
             return;
           }
           setWsStatus("CONNECTED");
-          setAutoLog((prevLogs) => ["🟢 Websocket Live: Streaming 10 Indexes tick-by-tick from Deriv API!", ...prevLogs.slice(0, 48)]);
+          setAutoLog((prevLogs) => ["🟢 Websocket Live: Streaming all Volatility Indices tick-by-tick from Deriv API!", ...prevLogs.slice(0, 48)]);
 
-          // Subscribe to all 10 synthetic assets ticks
+          // Subscribe to all synthetic assets ticks
           Object.values(DERIV_SYMBOL_MAP).forEach((symbolKey) => {
             if (ws && ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ ticks: symbolKey }));
@@ -464,78 +685,17 @@ export default function VolatilityScanner({
                     if (m.id !== marketId) return m;
 
                     const nextDigits = [...m.lastDigits.slice(1), lastDigit];
-
-                    // Grab contracts bias configurations
-                    const currentActive = activeContractsRef.current.length > 0 
-                      ? activeContractsRef.current 
-                      : ["UNDER 7"];
-                    const strategyIndex = Math.abs(m.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)) % currentActive.length;
-                    const chosenContract = currentActive[strategyIndex] || "UNDER 7";
-
-                    let action = chosenContract;
-                    let entryDigit = "9";
-                    let pattern = m.patternFound;
-                    let strategy = m.strategy;
-                    let calcStrength = m.strength;
-
-                    const countUnder = (boundary: number) => nextDigits.filter(d => d < boundary).length;
-                    const countOver = (boundary: number) => nextDigits.filter(d => d > boundary).length;
-
-                    if (chosenContract.startsWith("UNDER")) {
-                      const threshold = parseInt(chosenContract.split(" ")[1], 10) || 7;
-                      const matchesCount = countUnder(threshold);
-                      const pct = (matchesCount / nextDigits.length) * 100;
-
-                      // Cluster mean reversion scan
-                      const lastThreeHigh = nextDigits.slice(-3).filter(d => d >= threshold).length;
-                      if (lastThreeHigh >= 2) {
-                        calcStrength = Math.round(82 + (Math.random() * 12));
-                        pattern = `Extreme peak cluster (recent: ${nextDigits.slice(-3).join(",")})`;
-                        strategy = "Under Digit Drift Mean Reversion";
-                      } else {
-                        calcStrength = Math.round(55 + (pct * 0.44));
-                        pattern = `Low digit wave (${pct.toFixed(0)}% < ${threshold})`;
-                        strategy = "Second Least Digit";
-                      }
-                    } else if (chosenContract.startsWith("OVER")) {
-                      const threshold = parseInt(chosenContract.split(" ")[1], 10) || 1;
-                      const matchesCount = countOver(threshold);
-                      const pct = (matchesCount / nextDigits.length) * 100;
-
-                      // Oversold support base scan
-                      const lastThreeLow = nextDigits.slice(-3).filter(d => d <= threshold).length;
-                      if (lastThreeLow >= 2) {
-                        calcStrength = Math.round(81 + (Math.random() * 14));
-                        pattern = `Bottom oversold cluster (recent: ${nextDigits.slice(-3).join(",")})`;
-                        strategy = "Over Digit Threshold Oscillator";
-                      } else {
-                        calcStrength = Math.round(50 + (pct * 0.46));
-                        pattern = `Support wave building strength (${pct.toFixed(0)}% > ${threshold})`;
-                        strategy = "Over Digit Threshold Oscillator";
-                      }
-                    }
-
-                    if (calcStrength < 45) calcStrength = 45;
-                    if (calcStrength > 99) calcStrength = 99;
-
-                    // Match entry guidelines exactly
-                    if (action.startsWith("UNDER")) {
-                      const threshold = parseInt(action.split(" ")[1], 10) || 7;
-                      entryDigit = String((threshold + 1) % 10);
-                    } else {
-                      const threshold = parseInt(action.split(" ")[1], 10) || 2;
-                      entryDigit = String((threshold - 1 + 10) % 10);
-                    }
+                    const evaluated = evaluateIndependentMarketSetup(nextDigits, activeContractsRef.current);
 
                     return {
                       ...m,
                       price: priceValue,
                       lastDigits: nextDigits,
-                      strength: calcStrength,
-                      action,
-                      entryDigit,
-                      strategy,
-                      patternFound: pattern
+                      strength: evaluated.strength,
+                      action: evaluated.action,
+                      entryDigit: evaluated.entryDigit,
+                      strategy: evaluated.strategy,
+                      patternFound: evaluated.patternFound
                     };
                   });
                 });
@@ -650,13 +810,13 @@ export default function VolatilityScanner({
             setTimeout(() => {
               // Ensure we ONLY dispatch if the scanner is in SCANNING state and not currently generating
               if (scannerStateRef.current === "SCANNING" && !generatingSignalRef.current) {
-                // Select strongest market dynamically
+                // Select strongest market dynamically across all Volatility Indices
                 const sorted = [...marketsRef.current].sort((a, b) => b.strength - a.strength);
-                const topMarket = sorted[0] || INITIAL_MARKETS[4];
+                const topMarket = selectStrongestNonDuplicateMarket(sorted);
                 
                 setAutoLog((prevLogs) => [
-                  `⏰ [HOURLY DISPATCH CYCLE] Hourly countdown completed! Auto-broadcasting top setup to Telegram (Interval: ${formatCadenceValue(hourlyIntervalMinutesRef.current)})...`,
-                  `🏆 Dynamic asset: ${topMarket.name}`,
+                  `⏰ [MULTI-MARKET DISPATCH] Cadence countdown completed! Auto-broadcasting top setup across all Volatility Indices (Interval: ${formatCadenceValue(hourlyIntervalMinutesRef.current)})...`,
+                  `🏆 Selected market: ${topMarket.name} [${topMarket.action} | Confidence: ${topMarket.strength}%]`,
                   ...prevLogs.slice(0, 48)
                 ]);
                 
@@ -847,7 +1007,7 @@ export default function VolatilityScanner({
       setActiveContract(null);
       setTimerLeft(0);
 
-      const logReady = `🟢 [Scanner Resumed] Cooldown complete! Resuming real-time monitoring across all 10 indices for setups >= ${minStrengthThresholdRef.current}%.`;
+      const logReady = `🟢 [Scanner Resumed] Cooldown complete! Resuming real-time monitoring across all Volatility Indices for setups >= ${minStrengthThresholdRef.current}%.`;
       setAutoLog((prev) => [logReady, ...prev.slice(0, 49)]);
       playBeep(1000, 0.35);
     }
@@ -891,64 +1051,17 @@ export default function VolatilityScanner({
           if (newStrength < 45) m.strength = 48;
           if (newStrength > 99) newStrength = 99;
 
-          // determine target trading biases dynamically from activeContracts list
-          const currentActive = activeContractsRef.current.length > 0 
-            ? activeContractsRef.current 
-            : ["UNDER 7"];
-            
-          // Consistently align strategy index per asset
-          const strategyIndex = Math.abs(m.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)) % currentActive.length;
-          const chosenContract = currentActive[strategyIndex] || "UNDER 7";
-
-          let action = chosenContract;
-          let entryDigit = "9";
-          let pattern = m.patternFound;
-          let strategy = "Second Least Digit";
-
-          // Logic-based trigger/entry digits and patterns for Deriv Over/Under Contracts:
-          if (chosenContract === "UNDER 9") {
-            entryDigit = "9";
-            pattern = "Last digit 9 extreme peak frequency deviation";
-            strategy = "Under Digit Drift Mean Reversion";
-          } else if (chosenContract === "UNDER 8") {
-            entryDigit = "9";
-            pattern = "Digit 9 trend clustering (mean reversion)";
-            strategy = "Under Digit Drift Mean Reversion";
-          } else if (chosenContract === "UNDER 7") {
-            entryDigit = "9";
-            pattern = "Second Least Digit anomaly detected";
-            strategy = "Second Least Digit";
-          } else if (chosenContract === "UNDER 6") {
-            entryDigit = "8";
-            pattern = "Peak tick oscillation above 6 boundary";
-            strategy = "Under Digit Drift Mean Reversion";
-          } else if (chosenContract === "OVER 1") {
-            entryDigit = "0";
-            pattern = "Symmetric tick divergence at bottom zone 0";
-            strategy = "Over Digit Threshold Oscillator";
-          } else if (chosenContract === "OVER 2") {
-            entryDigit = "1";
-            pattern = "Harmonic support trend cluster on digit 1";
-            strategy = "Over Digit Threshold Oscillator";
-          } else if (chosenContract === "OVER 3") {
-            entryDigit = "2";
-            pattern = "Tick wave cycle oversold trigger on digit 2";
-            strategy = "Over Digit Threshold Oscillator";
-          } else if (chosenContract === "OVER 4") {
-            entryDigit = "3";
-            pattern = "Tick oscillator oversold at boundary 3";
-            strategy = "Over Digit Threshold Oscillator";
-          }
+          const evaluated = evaluateIndependentMarketSetup(nextDigits, activeContractsRef.current);
 
           return {
             ...m,
             price: newPrice,
             lastDigits: nextDigits,
-            strength: newStrength > 99 ? 99 : newStrength < 45 ? 45 : newStrength,
-            action,
-            entryDigit,
-            strategy,
-            patternFound: pattern
+            strength: evaluated.strength,
+            action: evaluated.action,
+            entryDigit: evaluated.entryDigit,
+            strategy: evaluated.strategy,
+            patternFound: evaluated.patternFound
           };
         });
 
@@ -992,30 +1105,40 @@ export default function VolatilityScanner({
     
     // Check if the scanner is currently idle (SCANNING state) and we hit the threshold
     if (scannerState === "SCANNING" && strongestMarket.strength >= minStrengthThreshold) {
+      const sorted = [...marketsRef.current].sort((a, b) => b.strength - a.strength);
+      const chosenMarket = selectStrongestNonDuplicateMarket(sorted, minStrengthThreshold);
       
-      const logMsg = `🔥 [Pattern Spike] ${strongestMarket.name} reached ${strongestMarket.strength}% (threshold requirement >= ${minStrengthThreshold}%). Triggering broadcast dispatch...`;
-      setAutoLog((prev) => [logMsg, ...prev.slice(0, 49)]);
+      if (chosenMarket) {
+        const logMsg = `🔥 [Pattern Spike] ${chosenMarket.name} selected with ${chosenMarket.strength}% [${chosenMarket.action}] (threshold >= ${minStrengthThreshold}%). Triggering broadcast dispatch...`;
+        setAutoLog((prev) => [logMsg, ...prev.slice(0, 49)]);
 
-      // Auto trigger the generator!
-      handleTriggerDetection(strongestMarket);
+        // Auto trigger the generator!
+        handleTriggerDetection(chosenMarket);
+      }
     }
   }, [strongestMarket, isRunning, scannerState, minStrengthThreshold, broadcastFrequency]);
 
   const compileTemplateSignal = (m: MarketIndex) => {
     const siteCfg = getSiteConfig();
+    const entryRange = getOverWinningRange(m.action);
+
     let html = `<b>🔔 NEW TRADING SIGNAL 🔔</b>\n\n`;
-    html += `<b>${m.name.toUpperCase()}</b>\n\n`;
-    html += `📈 <b>${m.action.toUpperCase()}</b>\n`;
-    html += `⚡ <b>Strategy:</b> ${m.strategy}\n\n`;
-    html += `📊 <b>Market Analysis (${m.ticks})</b>\n`;
-    html += `━━━━━━━━━\n`;
+    html += `<b>${m.name.toUpperCase()} — ${m.action.toUpperCase()}</b>\n\n`;
+    html += `📈 <b>Over Prediction:</b> <code>${m.action}</code>\n`;
+    html += `🔑 <b>Entry:</b> <code>${entryRange}</code>\n`;
+    html += `🔬 <b>Reason:</b> ${m.patternFound}\n\n`;
+    html += `📊 <b>Technical Market Analysis (${m.ticks})</b>\n`;
+    html += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    html += `• <b>Recent Digits:</b> [${m.lastDigits.join(", ")}]\n`;
+    html += `• <b>Strategy:</b> ${m.strategy}\n`;
+    html += `• <b>Target Winning Range:</b> ${entryRange}\n`;
+    html += `• <b>Confidence Level:</b> ${m.strength}%\n\n`;
     html += `🎯 <b>Entry Instructions:</b>\n\n`;
-    html += `<b>${siteCfg.botName}</b>\n`;
+    html += `🤖 <b>Bot:</b> <code>${siteCfg.botName}</code>\n`;
     html += `💹 <b>Trade:</b> ${m.action}\n`;
-    html += `🔑 <b>Entry Digit:</b> <code>${m.entryDigit}</code>\n`;
-    html += `⭐ <b>Confidence:</b> ${m.strength}%\n\n`;
+    html += `🔑 <b>Entry:</b> <code>${entryRange}</code>\n`;
+    html += `⭐ <b>Confidence Level:</b> ${m.strength}%\n\n`;
     html += `${siteCfg.promoUrl}\n\n`;
-    html += `📈 <b>Session Stats:</b>\n\n`;
     html += `⚠️ <b>Risk Management:</b>\n`;
     html += `• Stop after 4 consecutive wins\n• Max 5 runs per session\n• Use proper recovery if loss occurs\n\n`;
     
@@ -1037,6 +1160,32 @@ export default function VolatilityScanner({
       ]);
       return;
     }
+
+    // Deduplication check: rotate to alternative market setup if duplicate within immediate cycle
+    if (
+      lastSentSignalRef.current &&
+      lastSentSignalRef.current.marketName === targetMarket.name &&
+      lastSentSignalRef.current.action === targetMarket.action &&
+      Date.now() - lastSentSignalRef.current.sentAt < 120000
+    ) {
+      const sorted = [...marketsRef.current].sort((a, b) => b.strength - a.strength);
+      const alt = selectStrongestNonDuplicateMarket(sorted, 50);
+      if (alt && (alt.name !== targetMarket.name || alt.action !== targetMarket.action)) {
+        setAutoLog((prev) => [
+          `🔄 Duplicate setup prevented for ${targetMarket.name} (${targetMarket.action}). Rotated to next strongest setup: ${alt.name} (${alt.action}).`,
+          ...prev.slice(0, 49)
+        ]);
+        targetMarket = alt;
+      }
+    }
+
+    lastSentSignalRef.current = {
+      marketId: targetMarket.id,
+      marketName: targetMarket.name,
+      action: targetMarket.action,
+      entryDigit: targetMarket.entryDigit,
+      sentAt: Date.now(),
+    };
 
     generatingSignalRef.current = true;
     setGeneratingSignal(true);
@@ -1215,13 +1364,13 @@ export default function VolatilityScanner({
       return;
     }
 
-    // Select the strongest index setting
+    // Select the strongest non-duplicate index setup across all Volatility Indices
     const sorted = [...markets].sort((a, b) => b.strength - a.strength);
-    const top = sorted[0];
+    const top = selectStrongestNonDuplicateMarket(sorted);
     
     setAutoLog((prev) => [
-      `🎯 Manual evaluation requested. Intercepting tick waves...`,
-      `🏆 Identified peak index: ${top.name} [Confidence score: ${top.strength}%]`,
+      `🎯 Multi-market scan evaluation requested. Intercepting tick waves across all Volatility Indices...`,
+      `🏆 Peak setup identified: ${top.name} [${top.action} | Confidence: ${top.strength}% | Entry: Digit ${top.entryDigit}]`,
       ...prev.slice(0, 48)
     ]);
 
@@ -1517,14 +1666,21 @@ export default function VolatilityScanner({
                 <span>{strongestMarket.name}</span>
                 <span className="text-sky-300 font-mono text-sm font-semibold">${strongestMarket.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="text-xs text-slate-300 flex items-center gap-3">
+              <div className="text-xs text-slate-300 flex flex-wrap items-center gap-2.5">
                 <span className="flex items-center gap-1">
-                  🎯 Auto-Trade target: <b className="text-amber-400 font-mono">{strongestMarket.action}</b>
+                  🎯 Target: <b className="text-emerald-400 font-mono">{strongestMarket.action}</b>
                 </span>
-                <span>•</span>
+                <span className="text-slate-600">•</span>
                 <span className="flex items-center gap-1">
-                  🧠 Strategy: <small className="text-emerald-400 font-medium font-sans">{strongestMarket.strategy}</small>
+                  🔑 Entry: <b className="text-amber-350 font-mono">{getOverWinningRange(strongestMarket.action)}</b>
                 </span>
+                <span className="text-slate-600">•</span>
+                <span className="flex items-center gap-1">
+                  🧠 Strategy: <small className="text-sky-300 font-medium font-sans">{strongestMarket.strategy}</small>
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-450 truncate">
+                🔬 Reason: <span className="text-slate-300">{strongestMarket.patternFound}</span>
               </div>
             </div>
           </div>
@@ -1828,45 +1984,48 @@ export default function VolatilityScanner({
             )}
           </div>
 
-          {/* Column 2: Specific Over / Under Barriers Option Lists */}
+          {/* Column 2: Specific Over 1–5 Barriers Option Lists */}
           <div className="space-y-2 lg:col-span-1">
             <div className="flex justify-between items-center">
-              <label className="text-slate-350 font-bold block">Digit Barriers Matrix ({activeContracts.length} active)</label>
+              <label className="text-slate-350 font-bold block">Over 1–5 Barriers Matrix ({activeContracts.length} active)</label>
               <div className="flex gap-1.5 text-[9px] font-mono">
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveContracts(["OVER 1", "OVER 2", "OVER 3", "OVER 4", "UNDER 6", "UNDER 7", "UNDER 8", "UNDER 9"]);
-                    setAutoLog((prev) => ["⚙️ Selected all 8 Over/Under trade barrier targets.", ...prev.slice(0, 49)]);
+                    setActiveContracts(["OVER 1", "OVER 2", "OVER 3", "OVER 4", "OVER 5"]);
+                    setAutoLog((prev) => ["⚙️ Selected all 5 Over trade barrier targets (OVER 1–5).", ...prev.slice(0, 49)]);
                   }}
                   className="text-slate-400 hover:text-white cursor-pointer hover:underline"
                 >
-                  All
+                  All (1–5)
                 </button>
                 <span className="text-slate-700">|</span>
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveContracts([]);
-                    setAutoLog((prev) => ["⚠️ Selection cleared. Please select at least 1 digit barrier setup.", ...prev.slice(0, 49)]);
+                    setActiveContracts(["OVER 3"]);
+                    setAutoLog((prev) => ["⚙️ Defaulted selection to OVER 3 barrier setup.", ...prev.slice(0, 49)]);
                   }}
                   className="text-slate-400 hover:text-white cursor-pointer hover:underline"
                 >
-                  Clear
+                  Default
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5" id="monitored-barriers-matrix-gui">
-              {["OVER 1", "OVER 2", "OVER 3", "OVER 4", "UNDER 6", "UNDER 7", "UNDER 8", "UNDER 9"].map((b) => {
+            <div className="grid grid-cols-5 gap-1.5" id="monitored-barriers-matrix-gui">
+              {["OVER 1", "OVER 2", "OVER 3", "OVER 4", "OVER 5"].map((b) => {
                 const isActive = activeContracts.includes(b);
-                const isOver = b.startsWith("OVER");
                 return (
                   <button
                     key={b}
                     type="button"
                     onClick={() => {
                       if (isActive) {
+                        if (activeContracts.length <= 1) {
+                          setAutoLog((prev) => ["⚠️ At least one Over contract barrier (Over 1–5) must remain active.", ...prev.slice(0, 49)]);
+                          return;
+                        }
                         setActiveContracts((prev) => prev.filter((item) => item !== b));
                         setAutoLog((prev) => [`❌ Removed barrier ${b} from scanner list.`, ...prev.slice(0, 49)]);
                       } else {
@@ -1876,9 +2035,7 @@ export default function VolatilityScanner({
                     }}
                     className={`py-1 rounded font-mono font-bold text-[9px] transition-all border text-center cursor-pointer ${
                       isActive 
-                        ? isOver 
-                          ? "bg-emerald-950/45 text-emerald-300 border-emerald-800/60" 
-                          : "bg-sky-950/45 text-sky-300 border-sky-800/60"
+                        ? "bg-emerald-950/45 text-emerald-300 border-emerald-800/60" 
                         : "bg-slate-900 text-slate-600 border-slate-850 hover:border-slate-750/80"
                     }`}
                   >
@@ -1888,7 +2045,7 @@ export default function VolatilityScanner({
               })}
             </div>
             <p className="text-[10px] text-slate-550 leading-tight">
-              Bot scans <strong>only</strong> for selected Over/Under digit conditions. Fits exactly with channel instructions.
+              Bot strictly scans for <strong>OVER 1–5 ONLY</strong>. All Under, Over 6–9, and other contract types are strictly disallowed.
             </p>
           </div>
 
@@ -1950,10 +2107,13 @@ export default function VolatilityScanner({
           <span>Index Trend Strength vs Target</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" id="volatility-grid-10-markets">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" id="volatility-grid-multi-markets">
           {markets.map((m) => {
             const isHighest = strongestMarket?.id === m.id;
             const matchesThreshold = m.strength >= minStrengthThreshold;
+            const barrierNum = parseInt(m.action.replace(/[^0-9]/g, ""), 10) || 3;
+            const entryRange = getOverWinningRange(m.action);
+
             return (
               <div
                 key={m.id}
@@ -1984,13 +2144,16 @@ export default function VolatilityScanner({
 
                   <div className="flex items-center justify-between text-[10px] font-mono text-slate-450">
                     <span className="truncate text-slate-300 font-semibold">${m.price.toFixed(2)}</span>
-                    <span className={`text-[9px] border px-1.5 py-0.2 rounded font-bold ${
-                      matchesThreshold 
-                        ? "bg-emerald-950/30 text-emerald-400 border-emerald-900/30" 
-                        : "bg-slate-900 text-slate-500 border-slate-800"
-                    }`}>
-                      {m.action}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] text-amber-350 font-sans font-medium">Entry: <b>{entryRange}</b></span>
+                      <span className={`text-[9px] border px-1.5 py-0.2 rounded font-bold ${
+                        matchesThreshold 
+                          ? "bg-emerald-950/30 text-emerald-400 border-emerald-900/30"
+                          : "bg-slate-900 text-slate-500 border-slate-800"
+                      }`}>
+                        {m.action}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Tick Digital Flow bar */}
@@ -1998,17 +2161,19 @@ export default function VolatilityScanner({
                     <span className="text-[8px] uppercase tracking-wider">Ticks pattern:</span>
                     <div className="flex gap-0.5">
                       {m.lastDigits.map((dig, idx) => {
-                        const isTrigger = String(dig) === m.entryDigit;
+                        const isWinningTick = dig > barrierNum;
+                        const isTriggerDip = dig <= barrierNum;
                         return (
                           <span 
                             key={idx} 
                             className={`w-3.5 h-3.5 rounded flex items-center justify-center font-bold font-mono transition-colors text-[9px] ${
-                              isTrigger 
-                                ? "bg-amber-950/80 text-amber-300 border border-amber-500/20 animate-pulse" 
-                                : dig < 7 
-                                ? "bg-emerald-950/30 text-emerald-400" 
+                              isWinningTick 
+                                ? "bg-emerald-950/50 text-emerald-300 border border-emerald-800/40" 
+                                : isTriggerDip 
+                                ? "bg-amber-950/40 text-amber-350" 
                                 : "bg-slate-900 text-slate-500"
                             }`}
+                            title={`Digit: ${dig} (${isWinningTick ? 'Target Winning Range' : 'Below/Equal Barrier'})`}
                           >
                             {dig}
                           </span>

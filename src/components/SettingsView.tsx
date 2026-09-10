@@ -138,7 +138,7 @@ export default function SettingsView({ config, onChange, whatsAppConfig, onWhats
           botName: siteCfg.botName,
           botSignature: siteCfg.botSignature,
           hashtags: siteCfg.hashtags,
-          activeContracts: ["UNDER 7", "UNDER 8", "OVER 2", "OVER 3"],
+          activeContracts: ["OVER 1", "OVER 2", "OVER 3", "OVER 4", "OVER 5"],
           intervalMinutes,
           apiTokenInstance: whatsAppConfig.isConnected ? whatsAppConfig.apiTokenInstance : undefined,
           idInstance: whatsAppConfig.isConnected ? whatsAppConfig.idInstance : undefined,

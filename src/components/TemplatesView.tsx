@@ -32,13 +32,13 @@ export default function TemplatesView({ onLoadTemplate, onShowSuccessAlert }: Pr
   // Built-in high fidelity baseline templates
   const baselineTemplates: PresetItem[] = [
     {
-      id: "zeta-volatility-100",
-      name: "Zeta Volatility 100 Under Setup",
+      id: "zeta-volatility-50-over",
+      name: "Zeta Volatility 50 (1s) Over 3 Setup",
       type: "Derivative Digit Contract",
-      symbol: "VOLATILITY 100 (1s) INDEX",
-      action: "UNDER 7",
-      strategy: "Second Least Digit Pattern Sniping",
-      notes: "High accuracy (85%+) tick oscillations breaker. Best loaded for high frequency short runs during low-volatility sessions."
+      symbol: "VOLATILITY 50 (1s) INDEX",
+      action: "OVER 3",
+      strategy: "Over Digit Threshold Oscillator",
+      notes: "Strong Over setup based on current digit analysis. Target winning entry: 4–9. Best loaded across all Volatility Indices."
     },
     {
       id: "crash-boom-sniper",
@@ -71,10 +71,10 @@ export default function TemplatesView({ onLoadTemplate, onShowSuccessAlert }: Pr
 
   const [customTemplates, setCustomTemplates] = useState<PresetItem[]>([]);
   const [newTemplateName, setNewTemplateName] = useState("");
-  const [newTemplateSymbol, setNewTemplateSymbol] = useState("VOLATILITY 75 INDEX");
-  const [newTemplateAction, setNewTemplateAction] = useState("UNDER 7");
+  const [newTemplateSymbol, setNewTemplateSymbol] = useState("VOLATILITY 50 (1s) INDEX");
+  const [newTemplateAction, setNewTemplateAction] = useState("OVER 3");
   const [newTemplateType, setNewTemplateType] = useState("Derivative Digit Contract");
-  const [newTemplateStrategy, setNewTemplateStrategy] = useState("Second Least Digit");
+  const [newTemplateStrategy, setNewTemplateStrategy] = useState("Over Digit Threshold Oscillator");
   const [newTemplateNotes, setNewTemplateNotes] = useState("");
 
   // Load custom templates from localStorage

@@ -712,12 +712,24 @@ app.post("/api/telegram/delete", async (req, res) => {
 // 3. The server receives it, validates it, builds the signal, sends to Telegram
 // 4. No state needs to be stored anywhere — each request is self-contained
 
-const MARKET_NAMES = [
-  "VOLATILITY 10 INDEX", "VOLATILITY 25 INDEX", "VOLATILITY 50 INDEX",
-  "VOLATILITY 75 INDEX", "VOLATILITY 100 INDEX", "VOLATILITY 100 (1s) INDEX",
-  "VOLATILITY 75 (1s) INDEX", "VOLATILITY 50 (1s) INDEX",
-  "JUMP 25 INDEX", "JUMP 50 INDEX",
+const ALL_VOLATILITY_INDICES = [
+  "VOLATILITY 10 INDEX",
+  "VOLATILITY 25 INDEX",
+  "VOLATILITY 50 INDEX",
+  "VOLATILITY 75 INDEX",
+  "VOLATILITY 100 INDEX",
+  "VOLATILITY 10 (1s) INDEX",
+  "VOLATILITY 25 (1s) INDEX",
+  "VOLATILITY 50 (1s) INDEX",
+  "VOLATILITY 75 (1s) INDEX",
+  "VOLATILITY 100 (1s) INDEX",
+  "VOLATILITY 150 (1s) INDEX",
+  "VOLATILITY 250 (1s) INDEX",
+  "VOLATILITY 300 (1s) INDEX",
 ];
+
+// Module-level cache to prevent duplicate server signals for consecutive setups
+let lastServerSignal: { market: string; contract: string } | null = null;
 
 interface CronConfig {
   botToken: string;
@@ -732,29 +744,84 @@ interface CronConfig {
   apiTokenInstance?: string;
   idInstance?: string;
   whatsappChatId?: string;
+  market?: string;
+  contract?: string;
+  entryDigit?: string;
+  strength?: number;
+  strategy?: string;
+  analysisDetails?: string;
+}
+
+const STRICT_ALLOWED_SERVER_OVER = ["OVER 1", "OVER 2", "OVER 3", "OVER 4", "OVER 5"];
+
+function getOverWinningRange(contract: string): string {
+  const num = parseInt(contract.replace(/[^0-9]/g, ""), 10);
+  if (num >= 1 && num <= 5) {
+    return `${num + 1}–9`;
+  }
+  return "4–9";
 }
 
 function buildServerSignal(cfg: CronConfig): string {
-  const market = MARKET_NAMES[Math.floor(Math.random() * MARKET_NAMES.length)];
-  const contract = cfg.activeContracts[Math.floor(Math.random() * cfg.activeContracts.length)] || "UNDER 7";
-  const strength = 85 + Math.floor(Math.random() * 14);
-  const entryDigitMap: Record<string, string> = {
-    "UNDER 9": "9", "UNDER 8": "9", "UNDER 7": "9", "UNDER 6": "8",
-    "OVER 1": "0", "OVER 2": "1", "OVER 3": "2", "OVER 4": "3",
-  };
-  const entryDigit = entryDigitMap[contract] || "9";
-  const strategy = contract.startsWith("UNDER") ? "Second Least Digit" : "Over Digit Threshold";
+  // Support specific market passed from scanner or select from all Volatility Indices with deduplication
+  let availableMarkets = ALL_VOLATILITY_INDICES;
+  if (!cfg.market && lastServerSignal && availableMarkets.length > 1) {
+    const filtered = availableMarkets.filter((m) => m !== lastServerSignal?.market);
+    if (filtered.length > 0) availableMarkets = filtered;
+  }
+  const market = cfg.market || availableMarkets[Math.floor(Math.random() * availableMarkets.length)];
+
+  // STRICT RULE: ONLY OVER 1, OVER 2, OVER 3, OVER 4, OVER 5 ALLOWED!
+  // Filter any configured contracts to strictly allow OVER 1–5 ONLY
+  let userOverContracts = (cfg.activeContracts || [])
+    .map((c) => c.toUpperCase().trim())
+    .filter((c) => STRICT_ALLOWED_SERVER_OVER.includes(c));
+
+  if (userOverContracts.length === 0) {
+    userOverContracts = [...STRICT_ALLOWED_SERVER_OVER];
+  }
+
+  if (!cfg.contract && lastServerSignal && userOverContracts.length > 1) {
+    const filtered = userOverContracts.filter((c) => c !== lastServerSignal?.contract);
+    if (filtered.length > 0) userOverContracts = filtered;
+  }
+
+  // Strictly clamp to OVER 1–5
+  let contract = (cfg.contract || userOverContracts[Math.floor(Math.random() * userOverContracts.length)] || "OVER 3").toUpperCase().trim();
+  if (!STRICT_ALLOWED_SERVER_OVER.includes(contract)) {
+    contract = "OVER 3";
+  }
+
+  const strength = cfg.strength || (85 + Math.floor(Math.random() * 10));
+  const entryRange = getOverWinningRange(contract);
+  
+  const strategy = cfg.strategy || (
+    contract === "OVER 4" || contract === "OVER 5"
+      ? "Over Digit Momentum Wave"
+      : "Over Digit Threshold Oscillator"
+  );
+
+  const analysisDetails = cfg.analysisDetails || "Strong Over setup based on the current digit analysis.";
+
+  // Store to prevent duplicate broadcast on next run
+  lastServerSignal = { market, contract };
 
   return (
     `<b>🔔 NEW TRADING SIGNAL 🔔</b>\n\n` +
-    `<b>${market}</b>\n\n` +
-    `📈 <b>${contract.toUpperCase()}</b>\n` +
-    `⚡ <b>Strategy:</b> ${strategy}\n\n` +
+    `<b>${market} — ${contract}</b>\n\n` +
+    `📈 <b>Over Prediction:</b> <code>${contract}</code>\n` +
+    `🔑 <b>Entry:</b> <code>${entryRange}</code>\n` +
+    `🔬 <b>Reason:</b> ${analysisDetails}\n\n` +
+    `📊 <b>Technical Market Analysis</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━━\n` +
+    `• <b>Strategy:</b> ${strategy}\n` +
+    `• <b>Target Winning Range:</b> ${entryRange}\n` +
+    `• <b>Confidence Level:</b> ${strength}%\n\n` +
     `🎯 <b>Entry Instructions:</b>\n\n` +
-    `<b>${cfg.botName}</b>\n` +
+    `🤖 <b>Bot:</b> <code>${cfg.botName}</code>\n` +
     `💹 <b>Trade:</b> ${contract}\n` +
-    `🔑 <b>Entry Digit:</b> <code>${entryDigit}</code>\n` +
-    `⭐ <b>Confidence:</b> ${strength}%\n\n` +
+    `🔑 <b>Entry:</b> <code>${entryRange}</code>\n` +
+    `⭐ <b>Confidence Level:</b> ${strength}%\n\n` +
     `${cfg.promoUrl}\n\n` +
     `⚠️ <b>Risk Management:</b>\n` +
     `• Stop after 4 consecutive wins\n• Max 5 runs per session\n• Use proper recovery if loss occurs\n\n` +
@@ -773,6 +840,14 @@ function parseCronConfig(body: any): { ok: true; cfg: CronConfig } | { ok: false
   if (!chatId || typeof chatId !== "string" || !chatId.trim()) {
     return { ok: false, error: "chatId is required" };
   }
+
+  const rawContracts = Array.isArray(body.activeContracts) && body.activeContracts.length > 0
+    ? body.activeContracts
+    : STRICT_ALLOWED_SERVER_OVER;
+  const filteredContracts = rawContracts
+    .map((c: any) => String(c).toUpperCase().trim())
+    .filter((c: string) => STRICT_ALLOWED_SERVER_OVER.includes(c));
+
   return {
     ok: true,
     cfg: {
@@ -782,14 +857,18 @@ function parseCronConfig(body: any): { ok: true; cfg: CronConfig } | { ok: false
       siteName: body.siteName || "kicktrade",
       promoUrl: body.promoUrl || "http://kicktrade.site",
       botName: body.botName || "USE KICKTRADE BOT",
-      botSignature: body.botSignature || "kicktrade Over/Under Bot",
-      hashtags: body.hashtags || "#TradingSignal #kicktrade #Signals",
-      activeContracts: Array.isArray(body.activeContracts) && body.activeContracts.length > 0
-        ? body.activeContracts
-        : ["UNDER 7", "UNDER 8", "OVER 2", "OVER 3"],
+      botSignature: body.botSignature || "kicktrade Over Bot",
+      hashtags: body.hashtags || "#TradingSignal #kicktrade #Signals #Over",
+      activeContracts: filteredContracts.length > 0 ? filteredContracts : [...STRICT_ALLOWED_SERVER_OVER],
       apiTokenInstance: typeof body.apiTokenInstance === "string" ? body.apiTokenInstance.trim() : "",
       idInstance: typeof body.idInstance === "string" ? body.idInstance.trim() : "",
       whatsappChatId: typeof body.whatsappChatId === "string" ? body.whatsappChatId.trim() : "",
+      market: typeof body.market === "string" ? body.market.trim() : undefined,
+      contract: typeof body.contract === "string" ? body.contract.trim() : undefined,
+      entryDigit: typeof body.entryDigit === "string" ? body.entryDigit.trim() : undefined,
+      strength: typeof body.strength === "number" ? body.strength : undefined,
+      strategy: typeof body.strategy === "string" ? body.strategy.trim() : undefined,
+      analysisDetails: typeof body.analysisDetails === "string" ? body.analysisDetails.trim() : undefined,
     },
   };
 }

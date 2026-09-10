@@ -98,9 +98,9 @@ export default function TradingSignalForm({
   const [sentiment, setSentiment] = useState("Moderate");
 
   // --- DERIV SYNTHETIC DIGIT MODE STATE ---
-  const [derivSymbol, setDerivSymbol] = useState("VOLATILITY 100 (1s) INDEX");
-  const [derivAction, setDerivAction] = useState("UNDER 7");
-  const [derivStrategy, setDerivStrategy] = useState("Second Least Digit");
+  const [derivSymbol, setDerivSymbol] = useState("VOLATILITY 50 (1s) INDEX");
+  const [derivAction, setDerivAction] = useState("OVER 3");
+  const [derivStrategy, setDerivStrategy] = useState("Over Digit Threshold Oscillator");
   const [derivTicks, setDerivTicks] = useState("1ticks");
   // ── Persisted site config — read from localStorage so changes survive reloads ──
   const savedSite = (() => {
@@ -1110,13 +1110,19 @@ export default function TradingSignalForm({
                   className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl text-slate-300 focus:text-white outline-none transition-all cursor-pointer"
                   id="deriv-symbol-select"
                 >
-                  <option value="VOLATILITY 100 (1s) INDEX">Volatility 100 (1s) Index</option>
-                  <option value="VOLATILITY 100 INDEX">Volatility 100 Index</option>
-                  <option value="VOLATILITY 75 (1s) INDEX">Volatility 75 (1s) Index</option>
-                  <option value="VOLATILITY 75 INDEX">Volatility 75 Index</option>
-                  <option value="VOLATILITY 50 INDEX">Volatility 50 Index</option>
-                  <option value="VOLATILITY 25 INDEX">Volatility 25 Index</option>
                   <option value="VOLATILITY 10 INDEX">Volatility 10 Index</option>
+                  <option value="VOLATILITY 10 (1s) INDEX">Volatility 10 (1s) Index</option>
+                  <option value="VOLATILITY 25 INDEX">Volatility 25 Index</option>
+                  <option value="VOLATILITY 25 (1s) INDEX">Volatility 25 (1s) Index</option>
+                  <option value="VOLATILITY 50 INDEX">Volatility 50 Index</option>
+                  <option value="VOLATILITY 50 (1s) INDEX">Volatility 50 (1s) Index</option>
+                  <option value="VOLATILITY 75 INDEX">Volatility 75 Index</option>
+                  <option value="VOLATILITY 75 (1s) INDEX">Volatility 75 (1s) Index</option>
+                  <option value="VOLATILITY 100 INDEX">Volatility 100 Index</option>
+                  <option value="VOLATILITY 100 (1s) INDEX">Volatility 100 (1s) Index</option>
+                  <option value="VOLATILITY 150 (1s) INDEX">Volatility 150 (1s) Index</option>
+                  <option value="VOLATILITY 250 (1s) INDEX">Volatility 250 (1s) Index</option>
+                  <option value="VOLATILITY 300 (1s) INDEX">Volatility 300 (1s) Index</option>
                   <option value="JUMP 100 INDEX">Jump 100 Index</option>
                   <option value="JUMP 50 INDEX">Jump 50 Index</option>
                   <option value="BEAR MARKET INDEX">Bear Market Index</option>
@@ -1136,17 +1142,17 @@ export default function TradingSignalForm({
 
               {/* Trade action Contract */}
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-300">Trade / Contract Type</label>
+                <label className="text-xs font-medium text-slate-300">Trade / Contract Type (OVER 1–5 ONLY)</label>
                 <input
                   type="text"
                   value={derivAction}
                   onChange={(e) => setDerivAction(e.target.value)}
-                  placeholder="e.g. UNDER 7, OVER 5, MATCHES 9, DIFFERS 2"
+                  placeholder="e.g. OVER 1, OVER 2, OVER 3, OVER 4, OVER 5"
                   className="w-full px-3 py-2.5 text-xs bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl text-slate-100 placeholder-slate-650 outline-none font-bold text-sky-400 font-mono tracking-wider"
                   required
                   id="deriv-action-input"
                 />
-                <span className="text-[10px] text-slate-500 block">Typical formats: UNDER 7, OVER 5, MATCHES 9, DIFFERS 0</span>
+                <span className="text-[10px] text-slate-500 block">Strict rule: OVER 1–5 ONLY (Over 1, Over 2, Over 3, Over 4, Over 5)</span>
               </div>
             </div>
 

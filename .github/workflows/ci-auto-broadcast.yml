@@ -1,0 +1,114 @@
+name: CI Pipeline with Auto-Broadcast
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  # ------------------------------------------------------------
+  # 1. YOUR MAIN JOBS (Example: Build & Test)
+  #    Replace these with your actual jobs that are failing.
+  # ------------------------------------------------------------
+  build-and-test:
+    runs-on: ubuntu-latest
+    # Simulating a job that fails (remove this 'exit 1' in your real code)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run build
+        run: echo "Building..." && exit 1 # <-- Simulates the failure you are seeing
+
+  # ------------------------------------------------------------
+  # 2. THE FIXED AUTO-BROADCAST JOB
+  #    This runs regardless of whether 'build-and-test' passed or failed.
+  # ------------------------------------------------------------
+  trigger-broadcast:
+    runs-on: ubuntu-latest
+    needs: [ build-and-test ] # Add all your main job names here
+    if: always() # <-- FIX 1: Forces this job to run even if dependencies fail
+    steps:
+      - name: Checkout code (optional, only needed if you rely on local files)
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------
+      # FIX 2: Safely determine the overall pipeline status
+      # ------------------------------------------------------------
+      - name: Determine pipeline status
+        id: status_check
+        run: |
+          # Check if ANY of the required jobs failed
+          if [[ "${{ needs.build-and-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-and-test.result }}" == "cancelled" ]]; then
+            echo "pipeline_status=failure" >> $GITHUB_OUTPUT
+          else
+            echo "pipeline_status=success" >> $GITHUB_OUTPUT
+          fi
+
+      # ------------------------------------------------------------
+      # FIX 3: Safely handle missing artifacts/files from failed jobs
+      #         (If your broadcast needs a file that wasn't generated)
+      # ------------------------------------------------------------
+      - name: Fetch build artifacts (with fallback)
+        id: artifacts
+        continue-on-error: true # Prevents this step from halting the whole job
+        run: |
+          # Download your artifact (replace 'build-logs' with your actual artifact name)
+          # If the artifact doesn't exist (because the main job failed), this will fail silently
+          gh run download ${{ github.run_id }} -n build-logs -D ./downloaded-artifacts || true
+          
+          # If the file exists, read it; otherwise, create a fallback JSON
+          if [ -f "./downloaded-artifacts/log.json" ]; then
+            echo "artifact_data=$(cat ./downloaded-artifacts/log.json)" >> $GITHUB_OUTPUT
+          else
+            echo 'artifact_data={"error": "Previous job failed to produce logs"}' >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # ------------------------------------------------------------
+      # FIX 4: Send the broadcast (handles network failures gracefully)
+      # ------------------------------------------------------------
+      - name: Send Broadcast Signal to AI / Webhook
+        id: broadcast
+        env:
+          # Pull the status we calculated earlier
+          STATUS: ${{ steps.status_check.outputs.pipeline_status }}
+          # The webhook URL for your AI/Broadcast service (set this in GitHub Secrets!)
+          WEBHOOK_URL: ${{ secrets.BROADCAST_WEBHOOK_URL }}
+        run: |
+          # Build the JSON payload with the status
+          # Replace this JSON structure with whatever your AI/broadcast system expects
+          PAYLOAD=$(cat <<EOF
+          {
+            "pipeline": "${{ github.repository }}",
+            "run_id": "${{ github.run_id }}",
+            "status": "${STATUS}",
+            "actor": "${{ github.actor }}",
+            "commit": "${{ github.sha }}",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
+          )
+
+          # Send the webhook
+          # CRITICAL FIX: The '|| true' ensures that even if the URL is wrong
+          # or the network is down, this script will NOT exit with a non-zero code.
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "${PAYLOAD}" \
+            --fail \
+            "${WEBHOOK_URL}" || true
+
+          echo "Broadcast attempt finished."
+
+      # ------------------------------------------------------------
+      # FIX 5: EXPLICITLY EXIT WITH CODE 0 (The ultimate fix)
+      #         No matter what happened above, this job will show as PASSED (green).
+      # ------------------------------------------------------------
+      - name: Force success status
+        if: always() # Run this last step regardless of previous step failures
+        run: |
+          echo "Notification job completed successfully (success or failure broadcast was attempted)."
+          exit 0 # <-- GUARANTEES this job never turns red.
