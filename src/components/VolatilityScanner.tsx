@@ -113,6 +113,7 @@ export function getOverWinningRange(contract: string): string {
 
 // Complete coverage of all Deriv standard and 1-second (1s) Volatility Indices
 const INITIAL_MARKETS: MarketIndex[] = [
+  // ── Standard Volatility Indices (Deriv) ──
   {
     id: "v10",
     name: "Volatility 10 Index",
@@ -126,6 +127,59 @@ const INITIAL_MARKETS: MarketIndex[] = [
     confidence: "86%",
     entryDigit: "3–9"
   },
+  {
+    id: "v25",
+    name: "Volatility 25 Index",
+    price: 6104.90,
+    lastDigits: [5, 2, 8, 1, 9, 3, 7, 0, 4, 8],
+    strength: 85,
+    patternFound: "Strong Over setup based on current digit analysis. Support consolidation with high-probability breakout into 2–9.",
+    action: "OVER 1",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "5ticks",
+    confidence: "85%",
+    entryDigit: "2–9"
+  },
+  {
+    id: "v50",
+    name: "Volatility 50 Index",
+    price: 184520.60,
+    lastDigits: [8, 4, 0, 9, 2, 7, 3, 1, 6, 8],
+    strength: 89,
+    patternFound: "Strong Over setup based on current digit analysis. Upward momentum wave converted to high-probability OVER 2.",
+    action: "OVER 2",
+    strategy: "Over Digit Momentum Wave",
+    ticks: "5ticks",
+    confidence: "89%",
+    entryDigit: "3–9"
+  },
+  {
+    id: "v75",
+    name: "Volatility 75 Index",
+    price: 74219.45,
+    lastDigits: [1, 5, 9, 2, 8, 0, 4, 7, 3, 9],
+    strength: 87,
+    patternFound: "Strong Over setup based on current digit analysis. Support bounce harmonic cluster above barrier into 3–9.",
+    action: "OVER 2",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "5ticks",
+    confidence: "87%",
+    entryDigit: "3–9"
+  },
+  {
+    id: "v100",
+    name: "Volatility 100 Index",
+    price: 334510.15,
+    lastDigits: [3, 9, 0, 5, 2, 7, 4, 1, 8, 7],
+    strength: 86,
+    patternFound: "Strong Over setup based on current digit analysis. Low-digit boundary exhaustion with rebound into 2–9.",
+    action: "OVER 1",
+    strategy: "Over Digit Threshold Oscillator",
+    ticks: "5ticks",
+    confidence: "86%",
+    entryDigit: "2–9"
+  },
+  // ── 1-Second (1s) Volatility Indices (Deriv) ──
   {
     id: "v10_1s",
     name: "Volatility 10 (1s) Index",
@@ -153,32 +207,6 @@ const INITIAL_MARKETS: MarketIndex[] = [
     entryDigit: "2–9"
   },
   {
-    id: "v20_1s",
-    name: "Volatility 20 (1s) Index",
-    price: 15420.30,
-    lastDigits: [4, 6, 2, 8, 5, 9, 1, 7, 3, 8],
-    strength: 86,
-    patternFound: "Strong Over setup based on current digit analysis. Support bounce above boundary into 3–9.",
-    action: "OVER 2",
-    strategy: "Over Digit Threshold Oscillator",
-    ticks: "1ticks",
-    confidence: "86%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v25",
-    name: "Volatility 25 Index",
-    price: 6104.90,
-    lastDigits: [5, 2, 8, 1, 9, 3, 7, 0, 4, 8],
-    strength: 85,
-    patternFound: "Strong Over setup based on current digit analysis. Support consolidation with high-probability breakout into 2–9.",
-    action: "OVER 1",
-    strategy: "Over Digit Threshold Oscillator",
-    ticks: "5ticks",
-    confidence: "85%",
-    entryDigit: "2–9"
-  },
-  {
     id: "v25_1s",
     name: "Volatility 25 (1s) Index",
     price: 19852.10,
@@ -192,32 +220,6 @@ const INITIAL_MARKETS: MarketIndex[] = [
     entryDigit: "3–9"
   },
   {
-    id: "v30_1s",
-    name: "Volatility 30 (1s) Index",
-    price: 38240.15,
-    lastDigits: [1, 7, 3, 9, 2, 8, 4, 6, 5, 9],
-    strength: 88,
-    patternFound: "Strong Over setup based on current digit analysis. Harmonic ascending flow confirming persistent upward bias into 3–9.",
-    action: "OVER 2",
-    strategy: "Over Digit Flow Continuation",
-    ticks: "1ticks",
-    confidence: "88%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v50",
-    name: "Volatility 50 Index",
-    price: 184520.60,
-    lastDigits: [8, 4, 0, 9, 2, 7, 3, 1, 6, 8],
-    strength: 89,
-    patternFound: "Strong Over setup based on current digit analysis. Upward momentum wave converted to high-probability OVER 2.",
-    action: "OVER 2",
-    strategy: "Over Digit Momentum Wave",
-    ticks: "5ticks",
-    confidence: "89%",
-    entryDigit: "3–9"
-  },
-  {
     id: "v50_1s",
     name: "Volatility 50 (1s) Index",
     price: 298520.40,
@@ -228,32 +230,6 @@ const INITIAL_MARKETS: MarketIndex[] = [
     strategy: "Over Digit Mean Reversion",
     ticks: "1ticks",
     confidence: "92%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v60_1s",
-    name: "Volatility 60 (1s) Index",
-    price: 89312.40,
-    lastDigits: [2, 9, 4, 8, 3, 7, 1, 9, 5, 8],
-    strength: 90,
-    patternFound: "Strong Over setup based on current digit analysis. Dynamic 60(1s) momentum wave converted to high-probability OVER 2.",
-    action: "OVER 2",
-    strategy: "Over Digit Momentum Wave",
-    ticks: "1ticks",
-    confidence: "90%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v75",
-    name: "Volatility 75 Index",
-    price: 74219.45,
-    lastDigits: [1, 5, 9, 2, 8, 0, 4, 7, 3, 9],
-    strength: 87,
-    patternFound: "Strong Over setup based on current digit analysis. Support bounce harmonic cluster above barrier into 3–9.",
-    action: "OVER 2",
-    strategy: "Over Digit Threshold Oscillator",
-    ticks: "5ticks",
-    confidence: "87%",
     entryDigit: "3–9"
   },
   {
@@ -283,19 +259,6 @@ const INITIAL_MARKETS: MarketIndex[] = [
     entryDigit: "3–9"
   },
   {
-    id: "v100",
-    name: "Volatility 100 Index",
-    price: 334510.15,
-    lastDigits: [3, 9, 0, 5, 2, 7, 4, 1, 8, 7],
-    strength: 86,
-    patternFound: "Strong Over setup based on current digit analysis. Low-digit boundary exhaustion with rebound into 2–9.",
-    action: "OVER 1",
-    strategy: "Over Digit Threshold Oscillator",
-    ticks: "5ticks",
-    confidence: "86%",
-    entryDigit: "2–9"
-  },
-  {
     id: "v100_1s",
     name: "Volatility 100 (1s) Index",
     price: 843265.50,
@@ -320,151 +283,40 @@ const INITIAL_MARKETS: MarketIndex[] = [
     ticks: "1ticks",
     confidence: "85%",
     entryDigit: "2–9"
-  },
-  {
-    id: "v200_1s",
-    name: "Volatility 200 (1s) Index",
-    price: 78540.80,
-    lastDigits: [5, 1, 8, 3, 9, 2, 7, 4, 6, 9],
-    strength: 89,
-    patternFound: "Strong Over setup based on current digit analysis. Continuous tick velocity breaking upward into 3–9.",
-    action: "OVER 2",
-    strategy: "Over Digit Momentum Wave",
-    ticks: "1ticks",
-    confidence: "89%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v250_1s",
-    name: "Volatility 250 (1s) Index",
-    price: 64289.40,
-    lastDigits: [8, 9, 7, 8, 4, 9, 8, 9, 2, 9],
-    strength: 93,
-    patternFound: "Strong Over setup based on current digit analysis. High momentum tick velocity converted to OVER 2 with maximum cushion.",
-    action: "OVER 2",
-    strategy: "Over Digit Momentum Wave",
-    ticks: "1ticks",
-    confidence: "93%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v300_1s",
-    name: "Volatility 300 (1s) Index",
-    price: 49512.80,
-    lastDigits: [0, 1, 2, 0, 3, 1, 0, 2, 1, 8],
-    strength: 89,
-    patternFound: "Strong Over setup based on current digit analysis. Low zone exhaustion with rebound into 2–9.",
-    action: "OVER 1",
-    strategy: "Over Digit Threshold Oscillator",
-    ticks: "1ticks",
-    confidence: "89%",
-    entryDigit: "2–9"
-  },
-  {
-    id: "v600_1s",
-    name: "Volatility 600 (1s) Index",
-    price: 612480.30,
-    lastDigits: [7, 2, 8, 4, 9, 3, 8, 5, 2, 8],
-    strength: 90,
-    patternFound: "Strong Over setup based on current digit analysis. Ascending velocity rebound converted to OVER 2.",
-    action: "OVER 2",
-    strategy: "Over Digit Momentum Wave",
-    ticks: "1ticks",
-    confidence: "90%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v900_1s",
-    name: "Volatility 900 (1s) Index",
-    price: 904120.70,
-    lastDigits: [1, 8, 3, 9, 4, 8, 2, 7, 5, 8],
-    strength: 88,
-    patternFound: "Strong Over setup based on current digit analysis. Support threshold bounce converted to OVER 2.",
-    action: "OVER 2",
-    strategy: "Over Digit Flow Continuation",
-    ticks: "1ticks",
-    confidence: "88%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v950_1s",
-    name: "Volatility 950 (1s) Index",
-    price: 954890.15,
-    lastDigits: [0, 9, 2, 8, 1, 7, 3, 8, 4, 9],
-    strength: 91,
-    patternFound: "Strong Over setup based on current digit analysis. Dynamic micro-dip rebound converted to OVER 2.",
-    action: "OVER 2",
-    strategy: "Over Digit Momentum Wave",
-    ticks: "1ticks",
-    confidence: "91%",
-    entryDigit: "3–9"
-  },
-  {
-    id: "v980_1s",
-    name: "Volatility 980 (1s) Index",
-    price: 981240.20,
-    lastDigits: [3, 8, 2, 9, 4, 7, 1, 8, 6, 9],
-    strength: 91,
-    patternFound: "Strong Over setup based on current digit analysis. Dynamic 980(1s) multi-cluster rebound converted to OVER 2.",
-    action: "OVER 2",
-    strategy: "Over Digit Momentum Wave",
-    ticks: "1ticks",
-    confidence: "91%",
-    entryDigit: "3–9"
   }
 ];
 
-// Deriv API Symbol Bidirectional Maps for all Volatility Indices (Standard & 1s)
+// Deriv API Symbol Bidirectional Maps for the 13 active Volatility Indices
 const DERIV_SYMBOL_MAP: Record<string, string> = {
   v10: "R_10",
+  v25: "R_25",
+  v50: "R_50",
+  v75: "R_75",
+  v100: "R_100",
   v10_1s: "1HZ10V",
   v15_1s: "1HZ15V",
-  v20_1s: "1HZ20V",
-  v25: "R_25",
   v25_1s: "1HZ25V",
-  v30_1s: "1HZ30V",
-  v50: "R_50",
   v50_1s: "1HZ50V",
-  v60_1s: "1HZ60V",
-  v75: "R_75",
   v75_1s: "1HZ75V",
   v90_1s: "1HZ90V",
-  v100: "R_100",
   v100_1s: "1HZ100V",
-  v150_1s: "1HZ150V",
-  v200_1s: "1HZ200V",
-  v250_1s: "1HZ250V",
-  v300_1s: "1HZ300V",
-  v600_1s: "1HZ600V",
-  v900_1s: "1HZ900V",
-  v950_1s: "1HZ950V",
-  v980_1s: "1HZ980V"
+  v150_1s: "1HZ150V"
 };
 
 const REVERSE_SYMBOL_MAP: Record<string, string> = {
   "R_10": "v10",
+  "R_25": "v25",
+  "R_50": "v50",
+  "R_75": "v75",
+  "R_100": "v100",
   "1HZ10V": "v10_1s",
   "1HZ15V": "v15_1s",
-  "1HZ20V": "v20_1s",
-  "R_25": "v25",
   "1HZ25V": "v25_1s",
-  "1HZ30V": "v30_1s",
-  "R_50": "v50",
   "1HZ50V": "v50_1s",
-  "1HZ60V": "v60_1s",
-  "R_75": "v75",
   "1HZ75V": "v75_1s",
   "1HZ90V": "v90_1s",
-  "R_100": "v100",
   "1HZ100V": "v100_1s",
-  "1HZ150V": "v150_1s",
-  "1HZ200V": "v200_1s",
-  "1HZ250V": "v250_1s",
-  "1HZ300V": "v300_1s",
-  "1HZ600V": "v600_1s",
-  "1HZ900V": "v900_1s",
-  "1HZ950V": "v950_1s",
-  "1HZ980V": "v980_1s"
+  "1HZ150V": "v150_1s"
 };
 
 // Helper to verify official Deriv Volatility Index format
@@ -689,9 +541,9 @@ export default function VolatilityScanner({
     );
   }); 
   const [autoLog, setAutoLog] = useState<string[]>([
-    "✅ Bot initialized: Dynamic Multi-Asset Scanner active across all official Deriv Volatility Indices.",
-    "🔄 Active Market Rotation: Automatically rotates across Volatility 10, 15 (1s), 25, 30 (1s), 50, 75, 90 (1s), 100, etc.",
-    "🌐 Platform Coverage: Fully synced with Deriv's 1-second (1s) and standard Volatility Indices.",
+    "✅ Bot initialized: Dynamic Multi-Asset Scanner active across the 13 official Deriv Volatility Indices.",
+    "🔄 Active Market Rotation: Automatically rotates across Volatility 10, 25, 50, 75, 100, 10 (1s), 15 (1s), 25 (1s), 50 (1s), 75 (1s), 90 (1s), 100 (1s), 150 (1s).",
+    "🌐 Platform Coverage: Fully synced exclusively with Deriv's official Volatility Indices.",
     "🔍 Strict Signal Rule: Analyzes Over 1–5 internally → Strictly converted to OVER 1 or OVER 2 ONLY.",
     "⚙️ Multi-Factor Engine: Analyzing recent digit results, digit frequency, momentum velocity, and current market pattern."
   ]);
@@ -2555,7 +2407,7 @@ export default function VolatilityScanner({
             </span>
             <input
               type="text"
-              placeholder="e.g. Volatility 60 (1s), 1HZ980V, 500, etc."
+              placeholder="e.g. Volatility 90 (1s), 1HZ15V, etc."
               value={customMarketInput}
               onChange={(e) => setCustomMarketInput(e.target.value)}
               onKeyDown={(e) => {

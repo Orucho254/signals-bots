@@ -733,32 +733,23 @@ app.post("/api/telegram/delete", async (req, res) => {
 // 3. The server receives it, validates it, builds the signal, sends to Telegram
 // 4. No state needs to be stored anywhere — each request is self-contained
 
-// Complete coverage of all official Deriv Volatility Indices directly from Deriv platform
+// Official Deriv Volatility Indices actively used and traded on Deriv (13 core markets)
 const ALL_VOLATILITY_INDICES = [
-  // 1-Second (1s) Indices shown in Deriv:
-  "VOLATILITY 100 (1s) INDEX",
-  "VOLATILITY 10 (1s) INDEX",
-  "VOLATILITY 15 (1s) INDEX",
-  "VOLATILITY 25 (1s) INDEX",
-  "VOLATILITY 30 (1s) INDEX",
-  "VOLATILITY 50 (1s) INDEX",
-  "VOLATILITY 75 (1s) INDEX",
-  "VOLATILITY 90 (1s) INDEX",
-  // Standard Volatility Indices shown in Deriv:
+  // Standard Volatility Indices (Deriv)
   "VOLATILITY 10 INDEX",
   "VOLATILITY 25 INDEX",
   "VOLATILITY 50 INDEX",
   "VOLATILITY 75 INDEX",
   "VOLATILITY 100 INDEX",
-  // Extended Deriv Synthetics:
+  // 1-Second (1s) Volatility Indices (Deriv)
+  "VOLATILITY 10 (1s) INDEX",
+  "VOLATILITY 15 (1s) INDEX",
+  "VOLATILITY 25 (1s) INDEX",
+  "VOLATILITY 50 (1s) INDEX",
+  "VOLATILITY 75 (1s) INDEX",
+  "VOLATILITY 90 (1s) INDEX",
+  "VOLATILITY 100 (1s) INDEX",
   "VOLATILITY 150 (1s) INDEX",
-  "VOLATILITY 200 (1s) INDEX",
-  "VOLATILITY 250 (1s) INDEX",
-  "VOLATILITY 300 (1s) INDEX",
-  "VOLATILITY 600 (1s) INDEX",
-  "VOLATILITY 900 (1s) INDEX",
-  "VOLATILITY 950 (1s) INDEX",
-  "VOLATILITY 980 (1s) INDEX",
 ];
 
 // Module-level cache to track market rotation and prevent duplicate server signals
