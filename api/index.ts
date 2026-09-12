@@ -539,12 +539,8 @@ app.post("/api/gemini/generate-signal", async (req, res) => {
     return;
   }
 
-  // Strictly exclude Volatility 75 per mandate: rotate to another market if requested
-  let activeSymbol = symbol.trim();
-  if (isExcludedVolatility75(activeSymbol)) {
-    const non75Pool = ALL_VOLATILITY_INDICES.filter((m) => !isExcludedVolatility75(m));
-    activeSymbol = non75Pool[Math.floor(Math.random() * non75Pool.length)];
-  }
+  // Clean symbol and preserve user/scanner requested Deriv market
+  let activeSymbol = symbol.trim().toUpperCase();
 
   // Strictly convert action to OVER 1 or OVER 2 ONLY
   let activeAction: "OVER 1" | "OVER 2" = "OVER 1";
@@ -570,7 +566,7 @@ SIGNATURE: ${botSignature} | TAGS: ${hashtags}
 NOTES: ${userNotes || "None"}
 
 CRITICAL RULES:
-- The symbol must be ${activeSymbol} (Volatility 75 is strictly forbidden).
+- The symbol must be ${activeSymbol} (official Deriv Volatility Index).
 - The contract action must be strictly ${activeAction} (OVER 1 or OVER 2 ONLY, never Over 3 or Under).
 - Target winning entry range is ${activeWinningRange}.
 Use only Telegram HTML tags (<b>,<i>,<code>,<u>,<s>,<pre>). Output ONLY JSON: {"signal":"...","rationale":"..."}`;
@@ -737,22 +733,24 @@ app.post("/api/telegram/delete", async (req, res) => {
 // 3. The server receives it, validates it, builds the signal, sends to Telegram
 // 4. No state needs to be stored anywhere — each request is self-contained
 
-// Extended coverage of all Deriv Volatility Indices (Standard & 1s)
-// Note: Volatility 75 is strictly excluded from signal generation per user mandate
+// Complete coverage of all official Deriv Volatility Indices directly from Deriv platform
 const ALL_VOLATILITY_INDICES = [
-  "VOLATILITY 10 INDEX",
+  // 1-Second (1s) Indices shown in Deriv:
+  "VOLATILITY 100 (1s) INDEX",
   "VOLATILITY 10 (1s) INDEX",
   "VOLATILITY 15 (1s) INDEX",
-  "VOLATILITY 20 (1s) INDEX",
-  "VOLATILITY 25 INDEX",
   "VOLATILITY 25 (1s) INDEX",
   "VOLATILITY 30 (1s) INDEX",
-  "VOLATILITY 50 INDEX",
   "VOLATILITY 50 (1s) INDEX",
-  "VOLATILITY 60 (1s) INDEX",
+  "VOLATILITY 75 (1s) INDEX",
   "VOLATILITY 90 (1s) INDEX",
+  // Standard Volatility Indices shown in Deriv:
+  "VOLATILITY 10 INDEX",
+  "VOLATILITY 25 INDEX",
+  "VOLATILITY 50 INDEX",
+  "VOLATILITY 75 INDEX",
   "VOLATILITY 100 INDEX",
-  "VOLATILITY 100 (1s) INDEX",
+  // Extended Deriv Synthetics:
   "VOLATILITY 150 (1s) INDEX",
   "VOLATILITY 200 (1s) INDEX",
   "VOLATILITY 250 (1s) INDEX",
@@ -762,13 +760,6 @@ const ALL_VOLATILITY_INDICES = [
   "VOLATILITY 950 (1s) INDEX",
   "VOLATILITY 980 (1s) INDEX",
 ];
-
-// Helper to strictly identify and exclude Volatility 75
-function isExcludedVolatility75(market: string): boolean {
-  if (!market) return false;
-  const upper = market.toUpperCase().trim();
-  return upper.includes("75") || upper === "V75" || upper === "V75_1S" || upper === "R_75" || upper === "1HZ75V";
-}
 
 // Module-level cache to track market rotation and prevent duplicate server signals
 let lastServerSignal: { market: string; contract: string } | null = null;
@@ -808,31 +799,25 @@ function getOverWinningRange(contract: string): string {
 }
 
 function buildServerSignal(cfg: CronConfig): string {
-  // 1. Filter base pool of available markets: Strictly exclude Volatility 75!
-  const non75Markets = ALL_VOLATILITY_INDICES.filter((m) => !isExcludedVolatility75(m));
+  // 1. Available markets: complete set of Deriv Volatility Indices
+  const availableMarkets = ALL_VOLATILITY_INDICES;
 
-  // 2. Check incoming cfg.market: If it is Volatility 75, intercept and discard it
-  let candidateMarket = cfg.market;
-  if (candidateMarket && isExcludedVolatility75(candidateMarket)) {
-    console.log(`[AutoBroadcast] Intercepted Volatility 75 request (${candidateMarket}). Excluding per mandate and rotating to another market.`);
-    candidateMarket = undefined;
-  }
-
-  // 3. Market Rotation: Select from available non-75 markets prioritizing unvisited indices
+  // 2. Market Rotation: Select from available Deriv markets prioritizing unvisited indices
   let market: string;
-  if (candidateMarket && non75Markets.includes(candidateMarket.toUpperCase())) {
-    market = candidateMarket.toUpperCase();
+  const candidateUpper = cfg.market?.toUpperCase().trim();
+  if (candidateUpper && availableMarkets.some(m => m.toUpperCase() === candidateUpper)) {
+    market = candidateUpper;
   } else {
-    // Exclude markets used in the last 4 cycles to enforce active rotation
-    const freshCandidates = non75Markets.filter((m) => !serverRecentMarkets.slice(-4).includes(m));
-    const selectionPool = freshCandidates.length > 0 ? freshCandidates : non75Markets;
-    market = selectionPool[Math.floor(Math.random() * selectionPool.length)] || non75Markets[0];
+    // Exclude markets used in the last 4 cycles to enforce active rotation across all Deriv volatilities
+    const freshCandidates = availableMarkets.filter((m) => !serverRecentMarkets.slice(-4).includes(m));
+    const selectionPool = freshCandidates.length > 0 ? freshCandidates : availableMarkets;
+    market = selectionPool[Math.floor(Math.random() * selectionPool.length)] || availableMarkets[0];
   }
 
   // Track rotation history
   serverRecentMarkets.push(market);
-  if (serverRecentMarkets.length > 20) {
-    serverRecentMarkets = serverRecentMarkets.slice(-20);
+  if (serverRecentMarkets.length > 24) {
+    serverRecentMarkets = serverRecentMarkets.slice(-24);
   }
 
   // Convert any incoming Over setup (Over 1, 2, 3, 4, 5, etc.) to strictly OVER 1 or OVER 2 ONLY

@@ -1110,28 +1110,37 @@ export default function TradingSignalForm({
                   className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl text-slate-300 focus:text-white outline-none transition-all cursor-pointer"
                   id="deriv-symbol-select"
                 >
-                  <option value="VOLATILITY 10 INDEX">Volatility 10 Index</option>
-                  <option value="VOLATILITY 10 (1s) INDEX">Volatility 10 (1s) Index</option>
-                  <option value="VOLATILITY 25 INDEX">Volatility 25 Index</option>
-                  <option value="VOLATILITY 25 (1s) INDEX">Volatility 25 (1s) Index</option>
-                  <option value="VOLATILITY 50 INDEX">Volatility 50 Index</option>
-                  <option value="VOLATILITY 50 (1s) INDEX">Volatility 50 (1s) Index</option>
-                  <option value="VOLATILITY 60 (1s) INDEX">Volatility 60 (1s) Index</option>
-                  <option value="VOLATILITY 90 (1s) INDEX">Volatility 90 (1s) Index</option>
-                  <option value="VOLATILITY 100 INDEX">Volatility 100 Index</option>
-                  <option value="VOLATILITY 100 (1s) INDEX">Volatility 100 (1s) Index</option>
-                  <option value="VOLATILITY 150 (1s) INDEX">Volatility 150 (1s) Index</option>
-                  <option value="VOLATILITY 200 (1s) INDEX">Volatility 200 (1s) Index</option>
-                  <option value="VOLATILITY 250 (1s) INDEX">Volatility 250 (1s) Index</option>
-                  <option value="VOLATILITY 300 (1s) INDEX">Volatility 300 (1s) Index</option>
-                  <option value="VOLATILITY 600 (1s) INDEX">Volatility 600 (1s) Index</option>
-                  <option value="VOLATILITY 900 (1s) INDEX">Volatility 900 (1s) Index</option>
-                  <option value="VOLATILITY 950 (1s) INDEX">Volatility 950 (1s) Index</option>
-                  <option value="VOLATILITY 980 (1s) INDEX">Volatility 980 (1s) Index</option>
-                  <option value="JUMP 100 INDEX">Jump 100 Index</option>
-                  <option value="JUMP 50 INDEX">Jump 50 Index</option>
-                  <option value="BEAR MARKET INDEX">Bear Market Index</option>
-                  <option value="BULL MARKET INDEX">Bull Market Index</option>
+                  <optgroup label="Deriv 1-Second (1s) Volatility Indices">
+                    <option value="VOLATILITY 100 (1s) INDEX">Volatility 100 (1s) Index</option>
+                    <option value="VOLATILITY 10 (1s) INDEX">Volatility 10 (1s) Index</option>
+                    <option value="VOLATILITY 15 (1s) INDEX">Volatility 15 (1s) Index</option>
+                    <option value="VOLATILITY 25 (1s) INDEX">Volatility 25 (1s) Index</option>
+                    <option value="VOLATILITY 30 (1s) INDEX">Volatility 30 (1s) Index</option>
+                    <option value="VOLATILITY 50 (1s) INDEX">Volatility 50 (1s) Index</option>
+                    <option value="VOLATILITY 75 (1s) INDEX">Volatility 75 (1s) Index</option>
+                    <option value="VOLATILITY 90 (1s) INDEX">Volatility 90 (1s) Index</option>
+                  </optgroup>
+                  <optgroup label="Deriv Standard Volatility Indices">
+                    <option value="VOLATILITY 10 INDEX">Volatility 10 Index</option>
+                    <option value="VOLATILITY 25 INDEX">Volatility 25 Index</option>
+                    <option value="VOLATILITY 50 INDEX">Volatility 50 Index</option>
+                    <option value="VOLATILITY 75 INDEX">Volatility 75 Index</option>
+                    <option value="VOLATILITY 100 INDEX">Volatility 100 Index</option>
+                  </optgroup>
+                  <optgroup label="Extended Deriv Synthetics">
+                    <option value="VOLATILITY 150 (1s) INDEX">Volatility 150 (1s) Index</option>
+                    <option value="VOLATILITY 200 (1s) INDEX">Volatility 200 (1s) Index</option>
+                    <option value="VOLATILITY 250 (1s) INDEX">Volatility 250 (1s) Index</option>
+                    <option value="VOLATILITY 300 (1s) INDEX">Volatility 300 (1s) Index</option>
+                    <option value="VOLATILITY 600 (1s) INDEX">Volatility 600 (1s) Index</option>
+                    <option value="VOLATILITY 900 (1s) INDEX">Volatility 900 (1s) Index</option>
+                    <option value="VOLATILITY 950 (1s) INDEX">Volatility 950 (1s) Index</option>
+                    <option value="VOLATILITY 980 (1s) INDEX">Volatility 980 (1s) Index</option>
+                    <option value="JUMP 100 INDEX">Jump 100 Index</option>
+                    <option value="JUMP 50 INDEX">Jump 50 Index</option>
+                    <option value="BEAR MARKET INDEX">Bear Market Index</option>
+                    <option value="BULL MARKET INDEX">Bull Market Index</option>
+                  </optgroup>
                 </select>
                 <div className="pt-1">
                   <input
